@@ -1,5 +1,7 @@
 # session-band
 
+**English** · [Français](README.fr.md)
+
 A Claude Code mod: one band above the prompt with the session at a glance.
 
 - **Band**: turn number, output speed of the last response (tok/s), cost of the last turn and of the session (with `showCost`), a countdown of the 1-hour prompt cache since the last answer, and context fill. The band gets an amber frame 20 minutes before the cache expires and a red one at 10. The row drops details as the window narrows instead of wrapping; `×` hides it for the rest of the session.

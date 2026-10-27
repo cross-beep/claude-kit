@@ -1,5 +1,7 @@
 # crew
 
+**English** · [Français](README.fr.md)
+
 A Claude Code mod: a progress bar above the prompt and a live panel of subagents. Made for the [savvy-flow](../savvy-flow) skill, and useful with any subagents.
 
 Formerly `savvy-progress` in [johnnyvizz/claude-kit](https://github.com/johnnyvizz/claude-kit): its tools are now `mcp__crew__progress` and `mcp__crew__step`, and its settings live under `pluginConfigs.crew`.

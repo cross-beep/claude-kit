@@ -1,5 +1,7 @@
 # savvy-flow
 
+**English** · [Français](README.fr.md)
+
 An orchestrated delivery flow for Claude Code. Run `/savvy-flow <task>` (`/savvy-flow:savvy-flow` when installed as a plugin): the session model plans, owns design, delegates implementation to tiered worker subagents and adversarially reviews what they return.
 
 ## What ships

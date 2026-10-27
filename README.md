@@ -1,5 +1,7 @@
 # claude-kit
 
+**English** · [Français](README.fr.md) — guide d'installation en français : [INSTALL.fr.md](INSTALL.fr.md)
+
 Skills and mods for [Claude Code](https://claude.com/claude-code), in one place: a fork of [johnnyvizz/claude-kit](https://github.com/johnnyvizz/claude-kit) tuned for my work, with the mods' UI in French (`language: fr`, or `auto` from the locale). Every item is a standalone plugin under `plugins/`: install only what you need.
 
 | Plugin | Type | What it does |
