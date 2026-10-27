@@ -2,7 +2,7 @@
 
 A Claude Code mod: one band above the prompt with the session at a glance.
 
-- **Band**: turn number, output speed of the last response (tok/s), cost of the last turn and of the session, a countdown of the 1-hour prompt cache since the last answer, and context fill. The band gets an amber frame 20 minutes before the cache expires and a red one at 10. The row drops details as the window narrows instead of wrapping; `×` hides it for the rest of the session.
+- **Band**: turn number, output speed of the last response (tok/s), cost of the last turn and of the session (with `showCost`), a countdown of the 1-hour prompt cache since the last answer, and context fill. The band gets an amber frame 20 minutes before the cache expires and a red one at 10. The row drops details as the window narrows instead of wrapping; `×` hides it for the rest of the session.
 - **Cache warning**: at 10 and 5 minutes left, a system notification with Claude's icon, titled `<project> — <session title>`, saying how many minutes the cache has left. In the desktop app, clicking it opens the session. Nothing fires while a turn runs.
 
 ## The notifier (macOS)
@@ -19,5 +19,15 @@ It builds `notifier/Session Band.app` next to the script; on its first notificat
 
 - `/session_data`: show or hide the band.
 - `/session_data demo <minutes>`: pretend the cache has that many minutes left, to preview the colors and the warning; the next answer resets it.
+
+## Settings
+
+`language`: `auto` (default), `en` or `fr`: the band, the command replies and the cache warning. `auto` follows Claude Code's `language` setting, then the system locale (`fr_CA.UTF-8` gives French), and falls back to English. Set it in `/config`, or, for a mod loaded by hand, in `~/.claude/settings.json`:
+
+```json
+{ "pluginConfigs": { "session-band": { "options": { "language": "fr" } } } }
+```
+
+`showCost`: off (default) or on. Off, the band shows no money; on, it adds the last turn's cost and the session's.
 
 Install instructions are in the [repository README](../../README.md).

@@ -1,27 +1,32 @@
 {
-  "name": "claude-kit",
-  "owner": { "name": "johnnyvizz", "url": "https://github.com/johnnyvizz" },
-  "metadata": { "description": "johnnyvizz's public Claude Code skills and mods." },
+  "name": "cross-kit",
+  "owner": {
+    "name": "cross-beep",
+    "url": "https://github.com/cross-beep"
+  },
+  "metadata": {
+    "description": "cross-beep's fork of johnnyvizz/claude-kit: Claude Code skills and mods, with French UI."
+  },
   "plugins": [
     {
       "name": "savvy-flow",
       "source": "./plugins/savvy-flow",
       "description": "Skill: plan, delegate to tiered worker subagents, review.",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "category": "skill"
     },
     {
-      "name": "savvy-progress",
-      "source": "./plugins/savvy-progress",
+      "name": "crew",
+      "source": "./plugins/crew",
       "description": "Mod: progress bar above the prompt and a live agents panel; made for savvy-flow, shows any subagents.",
-      "version": "1.2.1",
+      "version": "1.3.0",
       "category": "mod"
     },
     {
       "name": "session-band",
       "source": "./plugins/session-band",
-      "description": "Mod: band above the prompt with turn, speed, cost, prompt cache countdown and context; notifies before the cache expires.",
-      "version": "0.2.0",
+      "description": "Mod: band above the prompt with turn, speed, prompt cache countdown, context and optional cost; notifies before the cache expires.",
+      "version": "0.3.0",
       "category": "mod"
     }
   ]

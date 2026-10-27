@@ -3,17 +3,16 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { AgentRun, Flow, Panel, Phase, PlannedTask } from '../types'
 
-const flow = atom({ plugin: 'savvy-progress', key: 'flow' } as const, null)
-const agents = atom({ plugin: 'savvy-progress', key: 'agents' } as const, [])
-const panel = atom({ plugin: 'savvy-progress', key: 'panel' } as const, {
-  isCompact: false,
+const flow = atom({ plugin: 'crew', key: 'flow' } as const, null)
+const agents = atom({ plugin: 'crew', key: 'agents' } as const, [])
+const panel = atom({ plugin: 'crew', key: 'panel' } as const, {
   isDoneCollapsed: false,
   autoOpenedFor: '',
 })
-const now = atom({ plugin: 'savvy-progress', key: 'now' } as const, 0)
+const now = atom({ plugin: 'crew', key: 'now' } as const, 0)
 
-const TOOL = 'mcp__savvy-progress__progress'
-const STEP_TOOL = 'mcp__savvy-progress__step'
+const TOOL = 'mcp__crew__progress'
+const STEP_TOOL = 'mcp__crew__step'
 // Added to the end of each savvy worker's brief. Their system prompt words step
 // reporting as a condition ("if the step tool appears among your tools") and they
 // skip it even with the tool listed; the same request in the brief is followed.
@@ -28,6 +27,7 @@ const TIERS: readonly string[] = ['fable', 'heavy', 'careful', 'medium', 'light'
 const MAX_TASKS = 200
 const MAX_AFTER = 20
 const MAX_TITLE = 120
+const MAX_ACTIVITY = 120
 const ACCENT = '#8f8cf4'
 const DONE = '#5fbf8f'
 
@@ -42,9 +42,9 @@ type ProgressInput = {
 
 // ---------------------------------------------------------------------------
 // Language: the `language` option, else Claude Code's `language` setting, else the
-// process locale; English when nothing says Hebrew or Russian.
+// process locale; English when nothing says Hebrew, Russian or French.
 
-type Lang = 'en' | 'ru' | 'he'
+type Lang = 'en' | 'ru' | 'he' | 'fr'
 
 const STRINGS = {
   en: {
@@ -52,8 +52,6 @@ const STRINGS = {
     cost: 'Cost',
     tokens: 'Tokens',
     time: 'Time',
-    collapse: 'Collapse',
-    expand: 'Expand',
     running: 'Running',
     finished: 'Finished',
     planned: 'Planned',
@@ -62,7 +60,6 @@ const STRINGS = {
     failed: 'error',
     after: 'after',
     tokensWord: 'tokens',
-    agentsCount: 'agents',
     isRunning: 'running',
     isFinished: 'finished',
     isPlanned: 'planned',
@@ -83,8 +80,6 @@ const STRINGS = {
     cost: 'Стоимость',
     tokens: 'Токены',
     time: 'Время',
-    collapse: 'Свернуть',
-    expand: 'Развернуть',
     running: 'Работают',
     finished: 'Завершены',
     planned: 'Запланированы',
@@ -93,7 +88,6 @@ const STRINGS = {
     failed: 'ошибка',
     after: 'после',
     tokensWord: 'токенов',
-    agentsCount: 'агентов',
     isRunning: 'работает',
     isFinished: 'завершён',
     isPlanned: 'запланирована',
@@ -114,8 +108,6 @@ const STRINGS = {
     cost: 'עלות',
     tokens: 'טוקנים',
     time: 'זמן',
-    collapse: 'כיווץ',
-    expand: 'הרחבה',
     running: 'פועלים',
     finished: 'הסתיימו',
     planned: 'מתוכננים',
@@ -124,7 +116,6 @@ const STRINGS = {
     failed: 'שגיאה',
     after: 'אחרי',
     tokensWord: 'טוקנים',
-    agentsCount: 'סוכנים',
     isRunning: 'פועל',
     isFinished: 'הסתיים',
     isPlanned: 'מתוכנן',
@@ -139,6 +130,34 @@ const STRINGS = {
     ctx: 'הקשר',
     tier: { light: 'קל', medium: 'בינוני', careful: 'זהיר', heavy: 'כבד', fable: 'פייבל', other: 'אחר' },
     effort: { low: 'נמוך', medium: 'בינוני', high: 'גבוה', xhigh: 'גבוה מאוד', max: 'מקסימלי' },
+  },
+  fr: {
+    pane: 'Agents',
+    cost: 'Coût',
+    tokens: 'Tokens',
+    time: 'Temps',
+    running: 'En cours',
+    finished: 'Terminés',
+    planned: 'Planifiées',
+    empty: 'Aucun sous-agent pour l’instant.',
+    round: 'ronde',
+    failed: 'erreur',
+    after: 'après',
+    tokensWord: 'tokens',
+    isRunning: 'en cours',
+    isFinished: 'terminé',
+    isPlanned: 'planifiée',
+    opened: 'Panneau des agents ouvert.',
+    closed: 'Panneau des agents fermé.',
+    done: 'Terminé',
+    plan: 'Plan',
+    design: 'Design',
+    tasks: 'Tâches',
+    review: 'Révision',
+    busy: 'en cours',
+    ctx: 'contexte',
+    tier: { light: 'light', medium: 'medium', careful: 'careful', heavy: 'heavy', fable: 'fable', other: 'other' },
+    effort: { low: 'low', medium: 'medium', high: 'high', xhigh: 'xhigh', max: 'max' },
   },
 } as const
 
@@ -155,10 +174,11 @@ const effortWord = (effort: string): string => (tr().effort as Record<string, st
 
 const isRussian = (v: unknown): boolean => typeof v === 'string' && /^(ru|russian|рус)/i.test(v.trim())
 const isHebrew = (v: unknown): boolean => typeof v === 'string' && /^(he|iw|hebrew|עברית)/i.test(v.trim())
-const langOf = (v: unknown): Lang => (isHebrew(v) ? 'he' : isRussian(v) ? 'ru' : 'en')
+const isFrench = (v: unknown): boolean => typeof v === 'string' && /^(fr|french|fran[cç]ais)/i.test(v.trim())
+const langOf = (v: unknown): Lang => (isHebrew(v) ? 'he' : isRussian(v) ? 'ru' : isFrench(v) ? 'fr' : 'en')
 
 async function detectLang($: EngineInterface, option: unknown): Promise<Lang> {
-  if (option === 'en' || option === 'ru' || option === 'he') return option
+  if (option === 'en' || option === 'ru' || option === 'he' || option === 'fr') return option
   try {
     const settings = (await $.settings.read()) as Record<string, unknown>
     if (typeof settings.language === 'string' && settings.language.trim()) return langOf(settings.language)
@@ -459,6 +479,13 @@ const fmtTokens = (n: number): string =>
 
 const fmtCost = (usd: number): string => `$${usd < 10 ? usd.toFixed(2) : usd.toFixed(1)}`
 
+// The `showCost` option: off, no estimate is drawn anywhere. Module scope is fine
+// here: register runs again on every (re)load, with the options as they stand.
+let showCost = false
+
+// "≈$0.25" followed by `sep`, or nothing when the cost is not shown.
+const costText = (usd: number, sep: string): string => (showCost ? `≈${fmtCost(usd)}${sep}` : '')
+
 const fmtTime = (ms: number): string => {
   const s = Math.max(0, Math.round(ms / 1000))
   const h = Math.floor(s / 3600)
@@ -468,6 +495,27 @@ const fmtTime = (ms: number): string => {
 }
 
 const elapsed = (a: AgentRun, at: number): number => (a.endedAt ?? Math.max(at, a.startedAt)) - a.startedAt
+
+const oneLine = (v: unknown): string => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '')
+
+// What a tool call does, in a few words: "Bash · npm test", "Edit · register.tsx",
+// "HubSpot · search_crm_objects".
+const activityOf = (tool: string, input: Record<string, unknown>): string => {
+  const mcp = /^mcp__(.+?)__(.+)$/.exec(tool)
+  if (mcp) return clip(`${mcp[1]} · ${mcp[2]}`, MAX_ACTIVITY)
+  const file = oneLine(input.file_path ?? input.notebook_path)
+  const arg = file
+    ? (file.split('/').filter(Boolean).pop() ?? file)
+    : oneLine(input.command ?? input.pattern ?? input.query ?? input.url ?? input.description ?? input.skill).replace(/^https?:\/\//, '')
+  return clip(arg ? `${tool} · ${arg}` : tool, MAX_ACTIVITY)
+}
+
+// The activity a row shows: a running agent's last tool call.
+const activityShown = (a: AgentRun) => (a.status === 'running' ? a.activity : undefined)
+
+// A running agent's row grows a line for its activity.
+const ACTIVITY_H = 14
+const agentHeight = (a: AgentRun): number => 66 + (activityShown(a) ? ACTIVITY_H : 0)
 
 type Planned = PlannedTask & { n: number }
 
@@ -560,6 +608,33 @@ const CRAB_CSS = `<style>
 @keyframes wave{50%{transform:skewY(-12deg) scaleX(.85)}}
 .c-explore.run .it{transform-origin:50% 100%;animation:fence .5s ease-in-out infinite}
 @keyframes fence{50%{transform:rotate(25deg)}}
+.c-wizard.run .wand{transform-origin:50% 100%;animation:wz-wave 1s ease-in-out infinite}
+.c-wizard.run .spark{animation:blink .5s steps(1) infinite}
+.c-wizard.run .hs{animation:blink 1s steps(1) infinite -.5s}
+@keyframes wz-wave{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(20deg)}}
+.c-ninja.run .tail{transform-origin:100% 50%;animation:nj-flut .25s steps(1) infinite}
+.c-ninja.run .shu{transform-origin:50% 50%;animation:nj-spin .25s steps(2) infinite}
+@keyframes nj-flut{50%{transform:skewY(-15deg) scaleX(.85)}}@keyframes nj-spin{to{transform:rotate(90deg)}}
+.c-painter.run .brush{transform-origin:50% 100%;animation:pt-dab .5s ease-in-out infinite}
+.c-painter.run .drop{animation:pt-drip 1s linear infinite}
+@keyframes pt-dab{50%{transform:rotate(-25deg)}}
+@keyframes pt-drip{0%{transform:translateY(0);opacity:0}20%{opacity:1}100%{transform:translateY(6px);opacity:0}}
+.c-photo .fl{opacity:0}
+.c-photo.run .fl{animation:ph-flash 1s steps(1) infinite}
+@keyframes ph-flash{0%{opacity:1}12%,100%{opacity:0}}
+.c-scientist.run .flask{transform-origin:50% 100%;animation:sc-swirl 1s ease-in-out infinite}
+.c-scientist.run .b1{animation:sc-rise 1s linear infinite}.c-scientist.run .b2{animation:sc-rise 1s linear infinite -.5s}
+@keyframes sc-swirl{25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+@keyframes sc-rise{0%{transform:translateY(2px);opacity:0}30%{opacity:1}100%{transform:translateY(-3px);opacity:0}}
+.c-dj.run .cl,.c-dj.run .cr{transform-origin:50% 50%;animation:dj-bass .5s steps(1) infinite}
+.c-dj.run .n1{animation:dj-note 1s linear infinite}.c-dj.run .n2{animation:dj-note 1s linear infinite -.5s}
+@keyframes dj-bass{50%{transform:scale(1.2)}}
+@keyframes dj-note{0%{transform:translateY(2px);opacity:0}30%{opacity:1}100%{transform:translateY(-4px);opacity:0}}
+.c-banker.run .fan{transform-origin:50% 100%;animation:bk-fan .5s ease-in-out infinite}
+.c-banker.run .r1,.c-banker.run .r2{transform-origin:50% 50%;animation:bk-fall 1s linear infinite}.c-banker.run .r2{animation-delay:-.5s}
+.c-banker.run .sh{animation:blink 1s steps(1) infinite}
+@keyframes bk-fan{50%{transform:rotate(-20deg)}}
+@keyframes bk-fall{0%{transform:translateY(-3px) rotate(-12deg);opacity:0}20%,75%{opacity:1}50%{transform:translateY(3px) rotate(10deg)}100%{transform:translateY(8px) rotate(-8deg);opacity:0}}
 @media (prefers-reduced-motion: reduce){.run,.run g{animation:none!important}}
 </style>`
 
@@ -607,12 +682,119 @@ const COSTUMES: Record<string, (f: Fill, t: string) => void> = {
     f(7, 11, 11, 1, INK); f(18, 11, 4, 3, INK)
     f(27, 6, 1, 9, '#C9CCD2', 'it'); f(26, 15, 3, 1, '#7A4A26', 'it')
   },
+  // Wizard: pointed hat with a gold band; the wand waves, the hat's stars and the spark twinkle.
+  wizard: f => {
+    crabBody(f, -4, 'wand')
+    stamp(f, 6, 0, ['.........pp.......', '.........ppp......', '........pppp......', '........ppppp.....', '.......pppppp.....', '......pppppppp....', '.....pppppppppp...', '....yyyyyyyyyyyy..', '.pppppppppppppppp.', 'aaaaaaaaaaaaaaaaaa'], { p: '#6B4FBB', y: '#F5C542', a: '#4A3590' })
+    f(25, 3, 1, 7, '#5A3519', 'wand')
+    f(25, 2, 1, 1, '#fff', 'wand')
+    f(16, 3, 1, 1, '#F5C542', 'hs')
+    f(18, 5, 1, 1, '#F5C542', 'hs')
+    f(13, 6, 1, 1, '#F5C542', 'hs')
+    f(27, -1, 1, 3, '#F5C542', 'spark')
+    f(26, 0, 3, 1, '#F5C542', 'spark')
+  },
+  // Ninja: black hood and mask, red headband; the tails flutter and the shuriken spins.
+  ninja: f => {
+    crabBody(f, -4)
+    f(10, 7, 10, 1, '#2B2A33')
+    f(8, 8, 14, 2, '#2B2A33')
+    f(7, 10, 16, 1, '#2B2A33')
+    f(7, 11, 16, 1, '#C8423B')
+    f(7, 14, 16, 2, '#2B2A33')
+    f(6, 11, 1, 1, '#C8423B')
+    f(4, 11, 2, 1, '#C8423B', 'tail')
+    f(2, 10, 2, 1, '#C8423B', 'tail')
+    f(0, 9, 2, 1, '#C8423B', 'tail')
+    f(4, 12, 2, 1, '#C8423B', 'tail')
+    f(2, 13, 2, 1, '#C8423B', 'tail')
+    stamp(f, 23, 3, ['..g..', '..g..', 'ggagg', '..g..', '..g..'], { g: '#8E929A', a: '#3A3A3C' }, 'shu')
+  },
+  // Painter: beret and palette; the brush dabs and a drop of paint drips.
+  painter: f => {
+    crabBody(f, -4, 'brush')
+    stamp(f, 7, 5, ['........g........', '...mmmmmmmmmm....', '.mmmmmmmmmmmmmm..', 'mmmmmmmmmmmmmmmm.', '.aaaaaaaaaaaaaaaa'], { g: '#55514C', m: '#D9467A', a: '#A8325C' })
+    stamp(f, 0, 15, ['.yyy.', 'yryay', 'yuyyy', '.yyy.'], { y: '#E9D3A6', r: '#D0453F', a: '#F5C542', u: '#378ADD' })
+    f(25, 4, 1, 6, '#7A4A26', 'brush')
+    f(25, 3, 1, 1, '#C9CCD2', 'brush')
+    f(25, 1, 1, 2, '#D9467A', 'brush')
+    f(24, 4, 1, 1, '#D9467A', 'drop')
+  },
+  // Photographer: cap and camera; the flash fires once a second.
+  photo: f => {
+    crabBody(f)
+    stamp(f, 3, 6, ['........tttttttt....', '......tttttttttttt..', '.....tttttttttttttt.', 'aaaaaatttttttttttttt'], { t: '#2A9D8F', a: '#1E6E64' })
+    stamp(f, 10, 14, ['.ww...ggg.', 'gggggggggg', 'gggaaaaggg', 'gggabuaggg', 'gggauuaggg', 'gggaaaaggg'], { w: '#E6E8EE', g: '#3A3A3C', a: '#8E929A', b: '#fff', u: '#7FB8E6' })
+    f(11, 12, 2, 5, '#FFFBE0', 'fl')
+    f(9, 14, 6, 1, '#FFFBE0', 'fl')
+    f(14, 12, 1, 1, '#FFFBE0', 'fl')
+    f(9, 16, 1, 1, '#FFFBE0', 'fl')
+    f(14, 16, 1, 1, '#FFFBE0', 'fl')
+  },
+  // Scientist: lab cap and goggles; the flask swirls and bubbles rise.
+  scientist: f => {
+    crabBody(f, -4, 'flask')
+    stamp(f, 6, 6, ['.g...gg....gg...g.', 'gwg.gwwg..gwwg.gwg', 'gwwwwwwwwwwwwwwwwg', '.gwwwwwwwwwwwwwwg.', '..................', '..aaaa......aaaa..', '.na..annnnnna..an.', '..a..a......a..a..', '..aaaa......aaaa..'], { g: '#B9B7AE', w: '#ECEAE3', a: '#4A4A48', n: '#2FA36B' })
+    f(9, 12, 2, 2, 'rgba(169,214,245,.45)')
+    f(19, 12, 2, 2, 'rgba(169,214,245,.45)')
+    stamp(f, 24, 4, ['.ggg.', '.g.g.', '.gng.', 'gnnag', 'gnnng', 'ggggg'], { g: '#C9CCD2', n: '#2FA36B', a: '#BFF0D2' }, 'flask')
+    f(26, 2, 1, 1, '#9BE3B8', 'b1')
+    f(25, 0, 1, 1, '#9BE3B8', 'b2')
+  },
+  // DJ: headphones that pump to the bass; notes float up on both sides.
+  dj: f => {
+    crabBody(f)
+    f(8, 4, 14, 1, '#3A3A3C')
+    f(7, 5, 1, 1, '#3A3A3C')
+    f(22, 5, 1, 1, '#3A3A3C')
+    f(6, 6, 1, 3, '#3A3A3C')
+    f(23, 6, 1, 3, '#3A3A3C')
+    f(4, 9, 3, 5, '#C04DB0', 'cl')
+    f(6, 10, 1, 3, '#2B2A33', 'cl')
+    f(23, 9, 3, 5, '#C04DB0', 'cr')
+    f(23, 10, 1, 3, '#2B2A33', 'cr')
+    stamp(f, 25, 1, ['..m.', '..mm', '..m.', 'mmm.', 'mm..'], { m: '#C04DB0' }, 'n1')
+    stamp(f, 1, 3, ['..y.', '..yy', '..y.', 'yyy.', 'yy..'], { y: '#F5C542' }, 'n2')
+  },
+  // Banker: sunglasses and a fan of bills; bills rain down, the glasses glint.
+  banker: f => {
+    crabBody(f, -4, 'fan')
+    f(7, 12, 1, 1, '#1F1E1D')
+    f(8, 12, 4, 2, '#1F1E1D')
+    f(12, 12, 6, 1, '#1F1E1D')
+    f(18, 12, 4, 2, '#1F1E1D')
+    f(22, 12, 1, 1, '#1F1E1D')
+    stamp(f, 23, 4, ['nnnnn..', 'naban..', 'nnddddd', '..debed', '..ddddd', '..n....'], { n: '#58AD67', a: '#A8DA9E', b: '#2F8F4E', d: '#6DBE7A', e: '#BFE5B5' }, 'fan')
+    f(9, 12, 1, 1, '#fff', 'sh')
+    f(19, 12, 1, 1, '#fff', 'sh')
+    stamp(f, 0, 1, ['nnnnn', 'naban', 'nnnnn'], { n: '#6DBE7A', a: '#BFE5B5', b: '#2F8F4E' }, 'r1')
+    stamp(f, 12, -3, ['nnnnn', 'naban', 'nnnnn'], { n: '#58AD67', a: '#A8DA9E', b: '#2F8F4E' }, 'r2')
+  },
   other: f => crabBody(f),
 }
 
-const costumeOf = (type: string): string => (type === 'Explore' ? 'explore' : tierOf(type))
+// Claude Code's own subagent types each wear a costume of their own.
+const TYPE_COSTUME: Record<string, string> = {
+  Explore: 'explore',
+  Plan: 'scientist',
+  'claude-code-guide': 'wizard',
+  'statusline-setup': 'painter',
+  'general-purpose': 'ninja',
+}
+// Any other type wears one of these, picked from its name: the same type always looks the same.
+const SPARE_COSTUMES = ['photo', 'dj', 'banker']
 
-const CRAB_SCALE = 1.1
+const hashOf = (s: string): number => [...s].reduce((h, ch) => (h * 31 + (ch.codePointAt(0) ?? 0)) >>> 0, 0)
+
+// A savvy tier's costume, else the type's own, else a spare one.
+const costumeOf = (type: string): string => {
+  const tier = tierOf(type)
+  if (tier !== 'other') return tier
+  const bare = type.replace(/^[^:]*:/, '')
+  return TYPE_COSTUME[bare] ?? SPARE_COSTUMES[hashOf(bare) % SPARE_COSTUMES.length] ?? 'other'
+}
+
+const CRAB_SCALE = 2
 
 // Body and props nest inside `bd` so a prop rides the bob and adds its own motion;
 // legs stay outside it and step on their own. `mirror` flips the crab inside its
@@ -657,6 +839,16 @@ const endText = (W: number, x: number, y: number, words = false): string =>
 
 const crabWidth = (scale: number): number => Math.round(CRAB_BOX * scale * 100) / 100
 
+// A row's text and bars start right of its crab.
+const TEXT_X = Math.ceil(crabWidth(CRAB_SCALE)) + 9
+// The crab's drawing is 26 units tall, legs included.
+const CRAB_H = 26 * CRAB_SCALE
+// An agent row's crab sits centred in its first 66px.
+const AGENT_CRAB_Y = Math.round((66 - CRAB_H) / 2)
+// A planned task's row: tall enough for its crab, its two lines centred.
+const PLANNED_H = Math.max(46, Math.ceil(CRAB_H) + 6)
+const PLANNED_CRAB_Y = Math.round((PLANNED_H - CRAB_H) / 2)
+
 // A panel crab at x in a row of width W: on the mirrored side and facing left in Hebrew.
 const rowCrab = (W: number, x: number, y: number, costume: string, dim = false, isWalking = false): string =>
   crab(mx(W, x, crabWidth(CRAB_SCALE)), y, costume, dim, isWalking, CRAB_SCALE, isRtl())
@@ -668,7 +860,12 @@ const svg = (W: number, H: number, body: string): string =>
 const headerSvg = (W: number, title: string, t: ReturnType<typeof totals>): string => {
   const s = tr()
   const gap = 6
-  const tw = (W - gap * 2) / 3
+  const tiles: [label: string, value: string][] = [
+    ...(showCost ? [[s.cost, costText(t.cost, '')] as [string, string]] : []),
+    [s.tokens, fmtTokens(t.tokens)],
+    [s.time, fmtTime(t.time)],
+  ]
+  const tw = (W - gap * (tiles.length - 1)) / tiles.length
   const top = title ? 28 : 0
   const tile = (i: number, k: string, v: string) =>
     `<rect class="tile" x="${mx(W, i * (tw + gap), tw)}" y="${top}" width="${tw}" height="40" rx="8"/>
@@ -678,7 +875,7 @@ const headerSvg = (W: number, title: string, t: ReturnType<typeof totals>): stri
     W,
     headerHeight(title),
     `${title ? `<text class="t" ${startText(W, 0, 15)} font-family="${FONT}" font-size="14" font-weight="600">${xml(fitText(title, 14, W))}</text>` : ''}
-${tile(0, s.cost, '≈' + fmtCost(t.cost))}${tile(1, s.tokens, fmtTokens(t.tokens))}${tile(2, s.time, fmtTime(t.time))}`,
+${tiles.map(([k, v], i) => tile(i, k, v)).join('')}`,
   )
 }
 
@@ -698,66 +895,59 @@ const agentSvg = (W: number, a: AgentRun, at: number): string => {
   const tier = tierOf(a.type)
   const color = colorOf(tier)
   const ctx = ctxOf(a)
-  const textW = W - 42 - 22
+  const textW = W - TEXT_X - 22
   const meta = [runModel(a)]
   if (a.round > 1) meta.push(`${s.round} ${a.round}`)
   if (a.status === 'failed') meta.push(s.failed)
   const barW = textW
   const progress = progressOf(a)
-  const stats = `${s.ctx} ${ctx}% · ${fmtTokens(a.contextTokens)}  ≈${fmtCost(a.costUsd)}  ${fmtTime(elapsed(a, at))}`
+  const stats = `${s.ctx} ${ctx}% · ${fmtTokens(a.contextTokens)}  ${costText(a.costUsd, '  ')}${fmtTime(elapsed(a, at))}`
   const steps = a.stepTotal ? `${a.stepDone ?? 0}/${a.stepTotal}${a.stepNote ? ' · ' + a.stepNote : ''}` : ''
   const stepsW = Math.max(0, barW - textWidth(stats, 11) - 12)
   // Without reported steps the bar falls back to the context, drawn grey.
   const fillW = Math.round(barW * (progress ?? ctx / 100))
+  const H = agentHeight(a)
+  // The activity line pushes the steps, stats and bar down by its height.
+  const dy = H - 66
   return svg(
     W,
-    66,
-    `${rowCrab(W, 0, 14, costumeOf(a.type), false, a.status === 'running')}
-<text class="t" ${startText(W, 42, 18)} font-family="${FONT}" font-size="13" font-weight="600">${xml(fitText(a.description || a.type, 13, textW))}</text>
-<text ${startText(W, 42, 34)} font-family="${FONT}" font-size="11"><tspan fill="${color}">${xml(tier === 'other' ? a.type : tierWord(tier))}</tspan><tspan class="s">  ${xml(meta.join('  ·  '))}</tspan></text>
-${steps && stepsW > 30 ? `<text class="t" ${startText(W, 42, 49)} font-family="${FONT}" font-size="11" font-variant-numeric="tabular-nums">${xml(fitText(steps, 11, stepsW))}</text>` : ''}
-<text class="s" ${endText(W, 42 + barW, 49, true)} font-family="${FONT}" font-size="11" font-variant-numeric="tabular-nums">${stats}</text>
-<rect class="k" x="${mx(W, 42, barW)}" y="55" width="${barW}" height="4" rx="2"/><rect${progress === null ? ' class="m"' : ''} x="${mx(W, 42, fillW)}" y="55" width="${fillW}" height="4" rx="2"${progress === null ? '' : ` fill="${color}"`}/>
+    H,
+    `${rowCrab(W, 0, AGENT_CRAB_Y, costumeOf(a.type), false, a.status === 'running')}
+<text class="t" ${startText(W, TEXT_X, 18)} font-family="${FONT}" font-size="13" font-weight="600">${xml(fitText(a.description || a.type, 13, textW))}</text>
+<text ${startText(W, TEXT_X, 34)} font-family="${FONT}" font-size="11"><tspan fill="${color}">${xml(tier === 'other' ? a.type : tierWord(tier))}</tspan><tspan class="s">  ${xml(meta.join('  ·  '))}</tspan></text>
+${activitySvg(W, a, at, barW, color)}
+${steps && stepsW > 30 ? `<text class="t" ${startText(W, TEXT_X, 49 + dy)} font-family="${FONT}" font-size="11" font-variant-numeric="tabular-nums">${xml(fitText(steps, 11, stepsW))}</text>` : ''}
+<text class="s" ${endText(W, TEXT_X + barW, 49 + dy, true)} font-family="${FONT}" font-size="11" font-variant-numeric="tabular-nums">${stats}</text>
+<rect class="k" x="${mx(W, TEXT_X, barW)}" y="${55 + dy}" width="${barW}" height="4" rx="2"/><rect${progress === null ? ' class="m"' : ''} x="${mx(W, TEXT_X, fillW)}" y="${55 + dy}" width="${fillW}" height="4" rx="2"${progress === null ? '' : ` fill="${color}"`}/>
 ${statusMark(mx(W, W - 8), 16, a.status, color)}
-<line class="ln" x1="0" y1="65.5" x2="${W}" y2="65.5"/>`,
+<line class="ln" x1="0" y1="${H - 0.5}" x2="${W}" y2="${H - 0.5}"/>`,
   )
+}
+
+// The activity line: the tool in progress, timed while it runs; dimmed once it returned.
+const activitySvg = (W: number, a: AgentRun, at: number, barW: number, color: string): string => {
+  const act = activityShown(a)
+  if (!act) return ''
+  const time = act.endedAt === undefined ? fmtTime(Math.max(0, at - act.startedAt)) : ''
+  const labelW = Math.max(30, barW - (time ? textWidth(time, 11) + 12 : 0) - 10)
+  return `<text ${startText(W, TEXT_X, 49)} font-family="${FONT}" font-size="11"><tspan fill="${color}">${isRtl() ? '‹' : '›'}</tspan><tspan class="${time ? 't' : 's'}"> ${xml(fitText(act.label, 11, labelW))}</tspan></text>
+${time ? `<text class="s" ${endText(W, TEXT_X + barW, 49)} font-family="${FONT}" font-size="11" font-variant-numeric="tabular-nums">${time}</text>` : ''}`
 }
 
 const plannedSvg = (W: number, p: Planned): string => {
   const tier = p.tier in TIER_COLOR ? p.tier : 'other'
   const color = colorOf(tier)
-  const textW = W - 42 - 22
+  const textW = W - TEXT_X - 22
   const meta = [tierModel(tier)]
   if (p.after.length) meta.push(`${tr().after} ${p.after.join(', ')}`)
   return svg(
     W,
-    46,
-    `${rowCrab(W, 0, 6, tier, true)}
-<text class="s" ${startText(W, 42, 18)} font-family="${FONT}" font-size="13" font-weight="600">${xml(fitText(`${p.n}. ${p.title}`, 13, textW))}</text>
-<text ${startText(W, 42, 34)} font-family="${FONT}" font-size="11"><tspan fill="${color}">${xml(tierWord(tier))}</tspan><tspan class="m">  ${xml(meta.filter(Boolean).join('  ·  '))}</tspan></text>
-${statusMark(mx(W, W - 8), 16, 'planned', color)}
-<line class="ln" x1="0" y1="45.5" x2="${W}" y2="45.5"/>`,
-  )
-}
-
-const compactSvg = (W: number, list: AgentRun[], planned: Planned[], t: ReturnType<typeof totals>): string => {
-  const icons = [
-    ...list.filter(a => a.status === 'running').map(a => ({ k: costumeOf(a.type), c: colorOf(tierOf(a.type)), s: 'running', dim: false })),
-    ...list.filter(a => a.status !== 'running').map(a => ({ k: costumeOf(a.type), c: colorOf(tierOf(a.type)), s: a.status, dim: false })),
-    ...planned.map(p => ({ k: p.tier in TIER_COLOR ? p.tier : 'other', c: colorOf(p.tier), s: 'planned', dim: true })),
-  ]
-  const fit = Math.max(1, Math.floor((W - 150) / 36))
-  const shown = icons.slice(0, fit)
-  const more = icons.length - shown.length
-  const body = shown
-    .map((ic, i) => rowCrab(W, i * 36, 0, ic.k, ic.dim, ic.s === 'running') + (ic.s === 'running' ? `<circle class="live" cx="${mx(W, i * 36 + 32)}" cy="4" r="3" fill="${ic.c}"/>` : ''))
-    .join('')
-  const x = shown.length * 36 + (more ? 4 : 0)
-  return svg(
-    W,
-    32,
-    `${body}${more ? `<text class="s" ${startText(W, x, 21, false)} font-family="${FONT}" font-size="12">+${more}</text>` : ''}
-<text class="s" ${endText(W, W, 21)} font-family="${FONT}" font-size="12" font-variant-numeric="tabular-nums">≈${fmtCost(t.cost)} · ${fmtTokens(t.tokens)} · ${fmtTime(t.time)}</text>`,
+    PLANNED_H,
+    `${rowCrab(W, 0, PLANNED_CRAB_Y, tier, true)}
+<text class="s" ${startText(W, TEXT_X, PLANNED_H / 2 - 5)} font-family="${FONT}" font-size="13" font-weight="600">${xml(fitText(`${p.n}. ${p.title}`, 13, textW))}</text>
+<text ${startText(W, TEXT_X, PLANNED_H / 2 + 11)} font-family="${FONT}" font-size="11"><tspan fill="${color}">${xml(tierWord(tier))}</tspan><tspan class="m">  ${xml(meta.filter(Boolean).join('  ·  '))}</tspan></text>
+${statusMark(mx(W, W - 8), PLANNED_H / 2 - 7, 'planned', color)}
+<line class="ln" x1="0" y1="${PLANNED_H - 0.5}" x2="${W}" y2="${PLANNED_H - 0.5}"/>`,
   )
 }
 
@@ -791,6 +981,7 @@ async function autoOpen($: EngineInterface, key: string): Promise<void> {
 }
 
 export const register: Register = (on, options) => {
+  showCost = options.showCost === true
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     lang = await detectLang($, options.language)
@@ -904,6 +1095,29 @@ export const register: Register = (on, options) => {
       }),
     )
     return { result: matched ? 'ok' : `ignored: no panel row for agent ${agentId}` }
+  })
+
+  // What each subagent is doing: the tool it called last, timed while it runs.
+  on('tool.call', async ($, e, next) => {
+    const agentId = e.agentId
+    if (!agentId || e.tool === TOOL || e.tool === STEP_TOOL) return next(e)
+    const callId = e.tool_use_id
+    const startedAt = await $.clock.now()
+    const label = activityOf(e.tool, e as unknown as Record<string, unknown>)
+    await update($, agents, list =>
+      list.some(a => a.agentId === agentId) ? list.map(a => (a.agentId === agentId ? { ...a, activity: { label, callId, startedAt } } : a)) : list,
+    )
+    await update($, now, () => startedAt)
+    try {
+      return await next(e)
+    } finally {
+      const endedAt = await $.clock.now()
+      // Only this call's own activity: a later call of the same agent may have replaced it.
+      const isThis = (a: AgentRun) => a.agentId === agentId && a.activity?.startedAt === startedAt && a.activity.callId === callId
+      await update($, agents, list =>
+        list.some(isThis) ? list.map(a => (isThis(a) && a.activity ? { ...a, activity: { ...a.activity, endedAt } } : a)) : list,
+      )
+    }
   })
 
   // Safety net: worker launches move the faint layer even if the orchestrator forgets to report.
@@ -1043,14 +1257,6 @@ export const register: Register = (on, options) => {
     // The pane's title says "Agents"; inside, only the flow's own name.
     const title = f && !f.isFinished ? f.title : ''
 
-    const toggleCompact = (
-      <Button
-        key="compact"
-        label={p.isCompact ? s.expand : s.collapse}
-        plain
-        onPress={() => update($, panel, prev => ({ ...prev, isCompact: !prev.isCompact }))}
-      />
-    )
     const toggleDone = (
       <Button
         key="done"
@@ -1060,7 +1266,7 @@ export const register: Register = (on, options) => {
       />
     )
     const isEmpty = list.length === 0 && planned.length === 0
-    const summary = `≈${fmtCost(t.cost)}, ${fmtTokens(t.tokens)} ${s.tokensWord}, ${fmtTime(t.time)}`
+    const summary = `${costText(t.cost, ', ')}${fmtTokens(t.tokens)} ${s.tokensWord}, ${fmtTime(t.time)}`
 
     if (e.surface === 'desktop' && 'Svg' in ui) {
       const { Svg } = ui
@@ -1073,17 +1279,10 @@ export const register: Register = (on, options) => {
 
       // In Hebrew the column hugs the right edge: section heads and buttons right-aligned.
       const align = isRtl() ? 'flex-end' : undefined
-      if (p.isCompact) {
-        return (
-          <Box flexDirection="column" gap={1} alignItems={align}>
-            <Svg source={compactSvg(W, list, planned, t)} alt={`${list.length} ${s.agentsCount}, ${summary}`} width={W} height={32} />
-            {toggleCompact}
-          </Box>
-        )
-      }
       const shownDone = p.isDoneCollapsed ? 0 : finished.length
-      const lines = 1 + (isEmpty ? 1 : 0) + (running.length > 0 ? 1 : 0) + (finished.length > 0 ? 1 : 0) + (planned.length > 0 ? 1 : 0)
-      const gridH = headerHeight(title) + lines * LINE_H + (running.length + shownDone) * 66 + planned.length * 46
+      const lines = (isEmpty ? 1 : 0) + (running.length > 0 ? 1 : 0) + (finished.length > 0 ? 1 : 0) + (planned.length > 0 ? 1 : 0)
+      const rowsH = [...running, ...finished.slice(0, shownDone)].reduce((h, a) => h + agentHeight(a), 0)
+      const gridH = headerHeight(title) + lines * LINE_H + rowsH + planned.length * PLANNED_H
       return (
         <Box flexDirection="column">
           {/* The grid sizes the pane; the content is placed over it, as an
@@ -1093,20 +1292,25 @@ export const register: Register = (on, options) => {
           ))}
           <Box flexDirection="column" position="absolute" top={0} left={0} right={0} alignItems={align}>
             <Svg source={headerSvg(W, title, t)} alt={title ? `${title}: ${summary}` : summary} width={W} height={headerHeight(title)} />
-            {toggleCompact}
             {isEmpty && <Text dimColor>{s.empty}</Text>}
             {running.length > 0 && section('h-run', `${s.running} · ${running.length}`)}
             {running.map(a => (
-              <Svg key={a.id} source={agentSvg(W, a, at)} alt={`${a.description}: ${modelName(a.model)}, ${s.isRunning}`} width={W} height={66} />
+              <Svg
+                key={a.id}
+                source={agentSvg(W, a, at)}
+                alt={`${a.description}: ${modelName(a.model)}, ${s.isRunning}${a.activity ? `, ${a.activity.label}` : ''}`}
+                width={W}
+                height={agentHeight(a)}
+              />
             ))}
             {finished.length > 0 && toggleDone}
             {!p.isDoneCollapsed &&
               finished.map(a => (
-                <Svg key={a.id} source={agentSvg(W, a, at)} alt={`${a.description}: ${modelName(a.model)}, ${s.isFinished}`} width={W} height={66} />
+                <Svg key={a.id} source={agentSvg(W, a, at)} alt={`${a.description}: ${modelName(a.model)}, ${s.isFinished}`} width={W} height={agentHeight(a)} />
               ))}
             {planned.length > 0 && section('h-plan', `${s.planned} · ${planned.length}`)}
             {planned.map(pl => (
-              <Svg key={`plan-${pl.n}`} source={plannedSvg(W, pl)} alt={`${pl.n}. ${pl.title}: ${s.isPlanned}`} width={W} height={46} />
+              <Svg key={`plan-${pl.n}`} source={plannedSvg(W, pl)} alt={`${pl.n}. ${pl.title}: ${s.isPlanned}`} width={W} height={PLANNED_H} />
             ))}
           </Box>
         </Box>
@@ -1123,6 +1327,7 @@ export const register: Register = (on, options) => {
       const progress = progressOf(a)
       const model = runModel(a)
       const steps = a.stepTotal ? `${a.stepDone ?? 0}/${a.stepTotal}${a.stepNote ? ' ' + a.stepNote : ''} · ` : ''
+      const act = activityShown(a)
       return (
         <Box key={a.id} flexDirection="column" marginBottom={1}>
           <Box flexDirection="row" gap={1}>
@@ -1137,12 +1342,20 @@ export const register: Register = (on, options) => {
             {tier === 'other' ? a.type : tierWord(tier)} · {model}
             {a.round > 1 ? ` · ${s.round} ${a.round}` : ''}
           </Text>
+          {act ? (
+            <Text wrap="truncate-end">
+              {'  '}
+              <Text color={color}>›</Text>
+              <Text dimColor={act.endedAt !== undefined}> {act.label}</Text>
+              {act.endedAt === undefined ? <Text dimColor> {fmtTime(Math.max(0, at - act.startedAt))}</Text> : null}
+            </Text>
+          ) : null}
           <Text wrap="truncate-end">
             {'  '}
             {progress === null ? <Text dimColor>{ctxBar(ctx, barW)}</Text> : <Text color={color}>{ctxBar(progress * 100, barW)}</Text>}
             <Text dimColor>
               {' '}
-              {steps}{s.ctx} {ctx}% · {fmtTokens(a.contextTokens)} ≈{fmtCost(a.costUsd)} {fmtTime(elapsed(a, at))}
+              {steps}{s.ctx} {ctx}% · {fmtTokens(a.contextTokens)} {costText(a.costUsd, ' ')}{fmtTime(elapsed(a, at))}
             </Text>
           </Text>
         </Box>
@@ -1151,53 +1364,37 @@ export const register: Register = (on, options) => {
 
     return (
       <Box flexDirection="column">
-        <Box flexDirection="row" justifyContent="space-between">
+        {title ? (
           <Text bold wrap="truncate-end">
             {title}
           </Text>
-          {toggleCompact}
-        </Box>
+        ) : null}
         <Text dimColor>
-          ≈{fmtCost(t.cost)} · {fmtTokens(t.tokens)} {s.tokensWord} · {fmtTime(t.time)}
+          {costText(t.cost, ' · ')}{fmtTokens(t.tokens)} {s.tokensWord} · {fmtTime(t.time)}
         </Text>
-        {p.isCompact ? (
-          <Text wrap="truncate-end">
-            {[...running, ...finished].map(a => (
-              <Text key={a.id} color={colorOf(tierOf(a.type))}>
-                {STATUS_GLYPH[a.status]}{' '}
-              </Text>
-            ))}
-            {planned.map(pl => (
-              <Text key={`plan-${pl.n}`} dimColor>
-                ◷{' '}
-              </Text>
-            ))}
-          </Text>
-        ) : (
-          <Box flexDirection="column" marginTop={1}>
-            {isEmpty && <Text dimColor>{s.empty}</Text>}
-            {running.length > 0 && <Text dimColor>{s.running} · {running.length}</Text>}
-            {running.map(row)}
-            {finished.length > 0 && toggleDone}
-            {!p.isDoneCollapsed && finished.map(row)}
-            {planned.length > 0 && <Text dimColor>{s.planned} · {planned.length}</Text>}
-            {planned.map(pl => {
-              const tier = pl.tier in TIER_COLOR ? pl.tier : 'other'
-              return (
-                <Box key={`plan-${pl.n}`} flexDirection="column" marginBottom={1}>
-                  <Text dimColor wrap="truncate-end">
-                    <Text color={colorOf(tier)}>▢</Text> {pl.n}. {pl.title} ◷
-                  </Text>
-                  <Text dimColor wrap="truncate-end">
-                    {'  '}
-                    {tierWord(tier)} · {tierModel(tier)}
-                    {pl.after.length ? ` · ${s.after} ${pl.after.join(', ')}` : ''}
-                  </Text>
-                </Box>
-              )
-            })}
-          </Box>
-        )}
+        <Box flexDirection="column" marginTop={1}>
+          {isEmpty && <Text dimColor>{s.empty}</Text>}
+          {running.length > 0 && <Text dimColor>{s.running} · {running.length}</Text>}
+          {running.map(row)}
+          {finished.length > 0 && toggleDone}
+          {!p.isDoneCollapsed && finished.map(row)}
+          {planned.length > 0 && <Text dimColor>{s.planned} · {planned.length}</Text>}
+          {planned.map(pl => {
+            const tier = pl.tier in TIER_COLOR ? pl.tier : 'other'
+            return (
+              <Box key={`plan-${pl.n}`} flexDirection="column" marginBottom={1}>
+                <Text dimColor wrap="truncate-end">
+                  <Text color={colorOf(tier)}>▢</Text> {pl.n}. {pl.title} ◷
+                </Text>
+                <Text dimColor wrap="truncate-end">
+                  {'  '}
+                  {tierWord(tier)} · {tierModel(tier)}
+                  {pl.after.length ? ` · ${s.after} ${pl.after.join(', ')}` : ''}
+                </Text>
+              </Box>
+            )
+          })}
+        </Box>
       </Box>
     )
   })
