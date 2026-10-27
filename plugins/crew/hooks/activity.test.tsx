@@ -12,7 +12,7 @@ const worker = async ($: Engine, on: On, toolMs = 0) => {
   on('settings.read', async () => ({ value: {} }) as never)
   on('session.start', async () => ({ cwd: '/repo' }) as never)
   on('tool.register', async () => ({ value: { tool: 'progress' } }) as never)
-  on('command.register', async () => ({ value: { command: 'agents-info' } }) as never)
+  on('command.register', async () => ({ value: { command: 'crew' } }) as never)
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('agent.spawn', () => ({ model: 'claude-opus-5-5', agentId: 'a1' }))
   on('tool.call', async () => {
