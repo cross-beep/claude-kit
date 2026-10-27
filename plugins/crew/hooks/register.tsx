@@ -794,7 +794,7 @@ const costumeOf = (type: string): string => {
   return TYPE_COSTUME[bare] ?? SPARE_COSTUMES[hashOf(bare) % SPARE_COSTUMES.length] ?? 'other'
 }
 
-const CRAB_SCALE = 1.6
+const CRAB_SCALE = 2
 
 // Body and props nest inside `bd` so a prop rides the bob and adds its own motion;
 // legs stay outside it and step on their own. `mirror` flips the crab inside its
@@ -841,8 +841,13 @@ const crabWidth = (scale: number): number => Math.round(CRAB_BOX * scale * 100) 
 
 // A row's text and bars start right of its crab.
 const TEXT_X = Math.ceil(crabWidth(CRAB_SCALE)) + 9
-// A planned task's row: tall enough for its crab.
-const PLANNED_H = 50
+// The crab's drawing is 26 units tall, legs included.
+const CRAB_H = 26 * CRAB_SCALE
+// An agent row's crab sits centred in its first 66px.
+const AGENT_CRAB_Y = Math.round((66 - CRAB_H) / 2)
+// A planned task's row: tall enough for its crab, its two lines centred.
+const PLANNED_H = Math.max(46, Math.ceil(CRAB_H) + 6)
+const PLANNED_CRAB_Y = Math.round((PLANNED_H - CRAB_H) / 2)
 
 // A panel crab at x in a row of width W: on the mirrored side and facing left in Hebrew.
 const rowCrab = (W: number, x: number, y: number, costume: string, dim = false, isWalking = false): string =>
@@ -907,7 +912,7 @@ const agentSvg = (W: number, a: AgentRun, at: number): string => {
   return svg(
     W,
     H,
-    `${rowCrab(W, 0, 11, costumeOf(a.type), false, a.status === 'running')}
+    `${rowCrab(W, 0, AGENT_CRAB_Y, costumeOf(a.type), false, a.status === 'running')}
 <text class="t" ${startText(W, TEXT_X, 18)} font-family="${FONT}" font-size="13" font-weight="600">${xml(fitText(a.description || a.type, 13, textW))}</text>
 <text ${startText(W, TEXT_X, 34)} font-family="${FONT}" font-size="11"><tspan fill="${color}">${xml(tier === 'other' ? a.type : tierWord(tier))}</tspan><tspan class="s">  ${xml(meta.join('  ·  '))}</tspan></text>
 ${activitySvg(W, a, at, barW, color)}
@@ -938,10 +943,10 @@ const plannedSvg = (W: number, p: Planned): string => {
   return svg(
     W,
     PLANNED_H,
-    `${rowCrab(W, 0, 4, tier, true)}
-<text class="s" ${startText(W, TEXT_X, 20)} font-family="${FONT}" font-size="13" font-weight="600">${xml(fitText(`${p.n}. ${p.title}`, 13, textW))}</text>
-<text ${startText(W, TEXT_X, 36)} font-family="${FONT}" font-size="11"><tspan fill="${color}">${xml(tierWord(tier))}</tspan><tspan class="m">  ${xml(meta.filter(Boolean).join('  ·  '))}</tspan></text>
-${statusMark(mx(W, W - 8), 18, 'planned', color)}
+    `${rowCrab(W, 0, PLANNED_CRAB_Y, tier, true)}
+<text class="s" ${startText(W, TEXT_X, PLANNED_H / 2 - 5)} font-family="${FONT}" font-size="13" font-weight="600">${xml(fitText(`${p.n}. ${p.title}`, 13, textW))}</text>
+<text ${startText(W, TEXT_X, PLANNED_H / 2 + 11)} font-family="${FONT}" font-size="11"><tspan fill="${color}">${xml(tierWord(tier))}</tspan><tspan class="m">  ${xml(meta.filter(Boolean).join('  ·  '))}</tspan></text>
+${statusMark(mx(W, W - 8), PLANNED_H / 2 - 7, 'planned', color)}
 <line class="ln" x1="0" y1="${PLANNED_H - 0.5}" x2="${W}" y2="${PLANNED_H - 0.5}"/>`,
   )
 }
