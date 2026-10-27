@@ -18,12 +18,12 @@ In Claude Code:
 
 ```
 /plugin marketplace add cross-beep/claude-kit
-/plugin install savvy-flow@claude-kit
-/plugin install crew@claude-kit
-/plugin install session-band@claude-kit
+/plugin install savvy-flow@cross-kit
+/plugin install crew@cross-kit
+/plugin install session-band@cross-kit
 ```
 
-Restart the session afterwards. Plugin skills and agents are namespaced: the skill is `/savvy-flow:savvy-flow`, the agents `savvy-flow:savvy-careful` and so on.
+The marketplace is named `cross-kit`, so it sits beside johnnyvizz's `claude-kit` without clashing. Restart the session afterwards. Plugin skills and agents are namespaced: the skill is `/savvy-flow:savvy-flow`, the agents `savvy-flow:savvy-careful` and so on.
 
 ### By hand
 
