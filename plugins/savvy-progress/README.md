@@ -14,10 +14,10 @@ Cost is a rough estimate from token counts and a built-in per-model price table 
 
 ## Settings
 
-`language`: `auto` (default), `en`, `ru` or `he`. Hebrew draws the bar and the panel right to left. `auto` follows Claude Code's `language` setting, then the system locale, and falls back to English. Set it in `/config`, or, for a mod loaded by hand, in `~/.claude/settings.json`:
+`language`: `auto` (default), `en`, `fr`, `ru` or `he`. Hebrew draws the bar and the panel right to left. `auto` follows Claude Code's `language` setting, then the system locale (`fr_CA.UTF-8` gives French), and falls back to English. Set it in `/config`, or, for a mod loaded by hand, in `~/.claude/settings.json`:
 
 ```json
-{ "pluginConfigs": { "savvy-progress": { "options": { "language": "ru" } } } }
+{ "pluginConfigs": { "savvy-progress": { "options": { "language": "fr" } } } }
 ```
 
 `autoOpen`: `savvy` (default) or `any`. With `savvy` the panel opens by itself when a `savvy-*` worker starts or a plan is reported. With `any` it also opens, once per session, when any other subagent starts. `/agents-info` toggles it either way.

@@ -49,6 +49,56 @@ const warned = atom({ plugin: 'session-band', key: 'warned' } as const, 0)
 // The Cache mod's own deadline: seeds ours after a reload missed the last turn.complete.
 const cacheModExpiresAt = atom({ plugin: 'Cache', key: 'expiresAt' } as const, null)
 
+// Language: the `language` option, else Claude Code's `language` setting, else the
+// process locale; English when nothing says French.
+
+type Lang = 'en' | 'fr'
+
+const STRINGS = {
+  en: {
+    turn: 'Turn',
+    expired: 'expired',
+    speed: 'speed',
+    cost: 'cost',
+    cache: 'cache',
+    context: 'context',
+    expiresIn: (minutes: number) => `Prompt cache expires in ${minutes} min`,
+    demo: (minutes: string) => `Cache demo: ${minutes} min left until the next answer resets it.`,
+    hidden: 'Session band hidden.',
+    shown: 'Session band shown.',
+  },
+  fr: {
+    turn: 'Tour',
+    expired: 'expiré',
+    speed: 'vitesse',
+    cost: 'coût',
+    cache: 'cache',
+    context: 'contexte',
+    expiresIn: (minutes: number) => `Le cache du prompt expire dans ${minutes} min`,
+    demo: (minutes: string) => `Démo du cache : ${minutes} min restantes, la prochaine réponse le réinitialise.`,
+    hidden: 'Bandeau de session masqué.',
+    shown: 'Bandeau de session affiché.',
+  },
+} as const
+
+// Module scope is fine here: session.start sets it again on every (re)load.
+let lang: Lang = 'en'
+const tr = () => STRINGS[lang]
+
+const isFrench = (v: unknown): boolean => typeof v === 'string' && /^(fr|french|fran[cç]ais)/i.test(v.trim())
+
+async function detectLang($: EngineInterface, option: unknown): Promise<Lang> {
+  if (option === 'en' || option === 'fr') return option
+  try {
+    const settings = (await $.settings.read()) as Record<string, unknown>
+    if (typeof settings.language === 'string' && settings.language.trim()) return isFrench(settings.language) ? 'fr' : 'en'
+  } catch {
+    // No settings: fall through to the locale.
+  }
+  const locale = (await $.env.get('LC_ALL')) || (await $.env.get('LC_MESSAGES')) || (await $.env.get('LANG'))
+  return isFrench(locale) ? 'fr' : 'en'
+}
+
 const ring = (color: string, glyph: string) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
     <circle cx="12" cy="12" r="10" fill="none" stroke="${color}" stroke-width="2"/>
@@ -154,7 +204,7 @@ const desktopSession = async ($: EngineInterface) => {
 // and then a toast says it instead.
 const notifyCacheExpiry = async ($: EngineInterface, minutes: number) => {
   const project = (await $.session.cwd()).split('/').filter(Boolean).pop() ?? 'session'
-  const message = `Prompt cache expires in ${minutes} min`
+  const message = tr().expiresIn(minutes)
 
   const notifier = `${$.plugin.root}/${NOTIFIER}`
   if (await $.fs.exists(notifier)) {
@@ -187,9 +237,10 @@ const notifyCacheExpiry = async ($: EngineInterface, minutes: number) => {
   if (!isDelivered) $.ui.toast(`⏳ ${text}`, { timeoutMs: 30000 })
 }
 
-export const register: Register = on => {
+export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     const result = await next(e)
+    lang = await detectLang($, options.language)
 
     await $.command.register({
       name: 'session_data',
@@ -230,7 +281,7 @@ export const register: Register = on => {
       await update($, warned, () => 0)
       await update($, isHidden, () => false)
 
-      return { text: `Cache demo: ${demo[1]} min left until the next answer resets it.` }
+      return { text: tr().demo(demo[1] ?? '') }
     }
 
     if (e.args.trim() === 'width') {
@@ -241,7 +292,7 @@ export const register: Register = on => {
     const hidden = !(await read($, isHidden))
     await update($, isHidden, () => hidden)
 
-    return { text: hidden ? 'Session band hidden.' : 'Session band shown.' }
+    return { text: hidden ? tr().hidden : tr().shown }
   })
 
   on('turn.start', async ($, e, next) => {
@@ -298,6 +349,7 @@ export const register: Register = on => {
     const s = await read($, stats)
     if (e.props.hasSurvey || s.turn === 0 || (await read($, isHidden))) return next(e)
 
+    const t = tr()
     const ui = $.ui.resolve(e)
     const { Box, Button, Text } = ui
     const Svg = 'Svg' in ui ? ui.Svg : null
@@ -317,7 +369,7 @@ export const register: Register = on => {
     const cacheText =
       e.props.isWorking ? '…'
       : secondsLeft === null ? '—'
-      : secondsLeft === 0 ? 'expired'
+      : secondsLeft === 0 ? t.expired
       : `${pad(Math.floor(secondsLeft / 60))}:${pad(secondsLeft % 60)}`
 
     lastColumns = e.props.bodyColumns
@@ -336,31 +388,31 @@ export const register: Register = on => {
       >
         {tier <= 2 ? (
           <Box flexDirection="row" alignItems="center" columnGap={1} flexShrink={0}>
-            {tier <= 1 ? <Text dimColor>Turn</Text> : <Text dimColor>#</Text>}
+            {tier <= 1 ? <Text dimColor>{t.turn}</Text> : <Text dimColor>#</Text>}
             <Text bold>{String(s.turn)}</Text>
           </Box>
         ) : null}
         {tier <= 3 ? (
           <Box flexDirection="row" alignItems="center" columnGap={1} flexShrink={0}>
-            {Svg ? <Svg source={SPEED_ICON} alt="speed" width={icon} height={icon} /> : <Text color={SPEED}>⚡</Text>}
+            {Svg ? <Svg source={SPEED_ICON} alt={t.speed} width={icon} height={icon} /> : <Text color={SPEED}>⚡</Text>}
             <Text bold wrap="truncate-end">{tier <= 1 || s.speed === null ? speed : `${s.speed}/s`}</Text>
           </Box>
         ) : null}
         <Box flexDirection="row" alignItems="center" columnGap={1} flexShrink={0}>
-          {Svg ? <Svg source={MONEY_ICON} alt="cost" width={icon} height={icon} /> : <Text color={MONEY}>$</Text>}
+          {Svg ? <Svg source={MONEY_ICON} alt={t.cost} width={icon} height={icon} /> : <Text color={MONEY}>$</Text>}
           <Text bold color={MONEY}>{turnCost}</Text>
           {tier <= 2 ? <Text dimColor>|</Text> : null}
           {tier <= 2 ? <Text bold>{usd(s.total)}</Text> : null}
         </Box>
         <Box flexDirection="row" alignItems="center" columnGap={1} flexShrink={0}>
-          {Svg ? <Svg source={cacheIcon(cacheColor)} alt="cache" width={icon} height={icon} /> : <Text color={cacheColor}>⧗</Text>}
+          {Svg ? <Svg source={cacheIcon(cacheColor)} alt={t.cache} width={icon} height={icon} /> : <Text color={cacheColor}>⧗</Text>}
           <Text bold color={level ?? undefined}>{cacheText}</Text>
         </Box>
         <Box flexGrow={1} flexShrink={1} />
         <Box flexDirection="row" alignItems="center" columnGap={1} flexShrink={0}>
-          {Svg ? <Svg source={contextIcon(s.context)} alt="context" width={icon} height={icon} /> : null}
+          {Svg ? <Svg source={contextIcon(s.context)} alt={t.context} width={icon} height={icon} /> : null}
           {Svg && tier === 0 ? (
-            <Svg source={contextBar(s.context)} alt={`context ${s.context}%`} width={80} height={6} />
+            <Svg source={contextBar(s.context)} alt={`${t.context} ${s.context}%`} width={80} height={6} />
           ) : null}
           <Text bold>{`${s.context}%`}</Text>
         </Box>

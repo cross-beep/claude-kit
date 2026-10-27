@@ -20,4 +20,12 @@ It builds `notifier/Session Band.app` next to the script; on its first notificat
 - `/session_data`: show or hide the band.
 - `/session_data demo <minutes>`: pretend the cache has that many minutes left, to preview the colors and the warning; the next answer resets it.
 
+## Settings
+
+`language`: `auto` (default), `en` or `fr`: the band, the command replies and the cache warning. `auto` follows Claude Code's `language` setting, then the system locale (`fr_CA.UTF-8` gives French), and falls back to English. Set it in `/config`, or, for a mod loaded by hand, in `~/.claude/settings.json`:
+
+```json
+{ "pluginConfigs": { "session-band": { "options": { "language": "fr" } } } }
+```
+
 Install instructions are in the [repository README](../../README.md).

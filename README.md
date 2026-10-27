@@ -1,6 +1,6 @@
 # claude-kit
 
-My public skills and mods for [Claude Code](https://claude.com/claude-code), in one place. Every item is a standalone plugin under `plugins/`: install only what you need.
+Skills and mods for [Claude Code](https://claude.com/claude-code), in one place: a fork of [johnnyvizz/claude-kit](https://github.com/johnnyvizz/claude-kit) tuned for my work, with the mods' UI in French (`language: fr`, or `auto` from the locale). Every item is a standalone plugin under `plugins/`: install only what you need.
 
 | Plugin | Type | What it does |
 | --- | --- | --- |
@@ -17,9 +17,10 @@ savvy-flow and savvy-progress work on their own and light up together: with both
 In Claude Code:
 
 ```
-/plugin marketplace add johnnyvizz/claude-kit
+/plugin marketplace add cross-beep/claude-kit
 /plugin install savvy-flow@claude-kit
 /plugin install savvy-progress@claude-kit
+/plugin install session-band@claude-kit
 ```
 
 Restart the session afterwards. Plugin skills and agents are namespaced: the skill is `/savvy-flow:savvy-flow`, the agents `savvy-flow:savvy-careful` and so on.
@@ -27,7 +28,7 @@ Restart the session afterwards. Plugin skills and agents are namespaced: the ski
 ### By hand
 
 ```bash
-git clone https://github.com/johnnyvizz/claude-kit.git ~/claude-kit
+git clone https://github.com/cross-beep/claude-kit.git ~/claude-kit
 ```
 
 **A skill** (no plugin system involved, names stay short: `/savvy-flow`, `savvy-careful`): copy its folders into your Claude Code config.
