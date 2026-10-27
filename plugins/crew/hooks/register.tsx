@@ -1021,8 +1021,8 @@ export const register: Register = (on, options) => {
       isDeferred: false,
     })
     await $.command.register({
-      name: 'agents-info',
-      description: 'Show or hide the panel of subagents: running, finished and planned, with model, context, cost and time',
+      name: 'crew',
+      description: 'Show or hide the panel of subagents: running, finished and planned, with live activity, context, tokens and time; `open` opens it',
     })
 
     // Ticks the running agents' clocks; quiet when nothing runs.
@@ -1037,8 +1037,8 @@ export const register: Register = (on, options) => {
     return started
   })
 
-  on('command.run', { command: 'agents-info' }, async ($, e) => {
-    // `/agents-info open` opens the panel, or brings it forward from behind another tab, without toggling it.
+  on('command.run', { command: 'crew' }, async ($, e) => {
+    // `/crew open` opens the panel, or brings it forward from behind another tab, without toggling it.
     if ((e.args ?? '').trim() === 'open') {
       const at = await $.clock.now()
       await update($, now, () => at)

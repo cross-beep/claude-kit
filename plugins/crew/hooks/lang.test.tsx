@@ -12,7 +12,7 @@ async function session($: Engine, on: On, env: Record<string, string>, settings:
   on('settings.read', async () => ({ value: settings }) as never)
   on('session.start', async () => ({ cwd: '/repo' }) as never)
   on('tool.register', async () => ({ value: { tool: 'progress' } }) as never)
-  on('command.register', async () => ({ value: { command: 'agents-info' } }) as never)
+  on('command.register', async () => ({ value: { command: 'crew' } }) as never)
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('agent.spawn', () => ({ model: 'claude-opus-5-5', agentId: 'a1' }))
   await $.session.start({ source: 'startup', cwd: '/repo', surface: 'terminal', isInteractive: true } as never)
@@ -38,7 +38,7 @@ test('fr: Claude Code’s language setting wins over the locale', async ($, on) 
 
 test('fr: the option wins over both', { options: { language: 'fr' } }, async ($, on) => {
   expect(await session($, on, { LANG: 'ru_RU.UTF-8' }, { language: 'english' })).toMatchObject({ result: 'ok: Tâches 1/4' })
-  const toggled = await $.command.run({ command: 'agents-info', args: 'open' } as never)
+  const toggled = await $.command.run({ command: 'crew', args: 'open' } as never)
   expect(toggled).toMatchObject({ text: 'Panneau des agents ouvert.' })
 })
 
