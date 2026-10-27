@@ -28,6 +28,7 @@ const TIERS: readonly string[] = ['fable', 'heavy', 'careful', 'medium', 'light'
 const MAX_TASKS = 200
 const MAX_AFTER = 20
 const MAX_TITLE = 120
+const MAX_ACTIVITY = 120
 const ACCENT = '#8f8cf4'
 const DONE = '#5fbf8f'
 
@@ -501,6 +502,27 @@ const fmtTime = (ms: number): string => {
 
 const elapsed = (a: AgentRun, at: number): number => (a.endedAt ?? Math.max(at, a.startedAt)) - a.startedAt
 
+const oneLine = (v: unknown): string => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '')
+
+// What a tool call does, in a few words: "Bash · npm test", "Edit · register.tsx",
+// "HubSpot · search_crm_objects".
+const activityOf = (tool: string, input: Record<string, unknown>): string => {
+  const mcp = /^mcp__(.+?)__(.+)$/.exec(tool)
+  if (mcp) return clip(`${mcp[1]} · ${mcp[2]}`, MAX_ACTIVITY)
+  const file = oneLine(input.file_path ?? input.notebook_path)
+  const arg = file
+    ? (file.split('/').filter(Boolean).pop() ?? file)
+    : oneLine(input.command ?? input.pattern ?? input.query ?? input.url ?? input.description ?? input.skill).replace(/^https?:\/\//, '')
+  return clip(arg ? `${tool} · ${arg}` : tool, MAX_ACTIVITY)
+}
+
+// The activity a row shows: a running agent's last tool call.
+const activityShown = (a: AgentRun) => (a.status === 'running' ? a.activity : undefined)
+
+// A running agent's row grows a line for its activity.
+const ACTIVITY_H = 14
+const agentHeight = (a: AgentRun): number => 66 + (activityShown(a) ? ACTIVITY_H : 0)
+
 type Planned = PlannedTask & { n: number }
 
 const plannedOf = (f: Flow | null, list: AgentRun[]): Planned[] => {
@@ -741,18 +763,32 @@ const agentSvg = (W: number, a: AgentRun, at: number): string => {
   const stepsW = Math.max(0, barW - textWidth(stats, 11) - 12)
   // Without reported steps the bar falls back to the context, drawn grey.
   const fillW = Math.round(barW * (progress ?? ctx / 100))
+  const H = agentHeight(a)
+  // The activity line pushes the steps, stats and bar down by its height.
+  const dy = H - 66
   return svg(
     W,
-    66,
+    H,
     `${rowCrab(W, 0, 14, costumeOf(a.type), false, a.status === 'running')}
 <text class="t" ${startText(W, 42, 18)} font-family="${FONT}" font-size="13" font-weight="600">${xml(fitText(a.description || a.type, 13, textW))}</text>
 <text ${startText(W, 42, 34)} font-family="${FONT}" font-size="11"><tspan fill="${color}">${xml(tier === 'other' ? a.type : tierWord(tier))}</tspan><tspan class="s">  ${xml(meta.join('  ·  '))}</tspan></text>
-${steps && stepsW > 30 ? `<text class="t" ${startText(W, 42, 49)} font-family="${FONT}" font-size="11" font-variant-numeric="tabular-nums">${xml(fitText(steps, 11, stepsW))}</text>` : ''}
-<text class="s" ${endText(W, 42 + barW, 49, true)} font-family="${FONT}" font-size="11" font-variant-numeric="tabular-nums">${stats}</text>
-<rect class="k" x="${mx(W, 42, barW)}" y="55" width="${barW}" height="4" rx="2"/><rect${progress === null ? ' class="m"' : ''} x="${mx(W, 42, fillW)}" y="55" width="${fillW}" height="4" rx="2"${progress === null ? '' : ` fill="${color}"`}/>
+${activitySvg(W, a, at, barW, color)}
+${steps && stepsW > 30 ? `<text class="t" ${startText(W, 42, 49 + dy)} font-family="${FONT}" font-size="11" font-variant-numeric="tabular-nums">${xml(fitText(steps, 11, stepsW))}</text>` : ''}
+<text class="s" ${endText(W, 42 + barW, 49 + dy, true)} font-family="${FONT}" font-size="11" font-variant-numeric="tabular-nums">${stats}</text>
+<rect class="k" x="${mx(W, 42, barW)}" y="${55 + dy}" width="${barW}" height="4" rx="2"/><rect${progress === null ? ' class="m"' : ''} x="${mx(W, 42, fillW)}" y="${55 + dy}" width="${fillW}" height="4" rx="2"${progress === null ? '' : ` fill="${color}"`}/>
 ${statusMark(mx(W, W - 8), 16, a.status, color)}
-<line class="ln" x1="0" y1="65.5" x2="${W}" y2="65.5"/>`,
+<line class="ln" x1="0" y1="${H - 0.5}" x2="${W}" y2="${H - 0.5}"/>`,
   )
+}
+
+// The activity line: the tool in progress, timed while it runs; dimmed once it returned.
+const activitySvg = (W: number, a: AgentRun, at: number, barW: number, color: string): string => {
+  const act = activityShown(a)
+  if (!act) return ''
+  const time = act.endedAt === undefined ? fmtTime(Math.max(0, at - act.startedAt)) : ''
+  const labelW = Math.max(30, barW - (time ? textWidth(time, 11) + 12 : 0) - 10)
+  return `<text ${startText(W, 42, 49)} font-family="${FONT}" font-size="11"><tspan fill="${color}">${isRtl() ? '‹' : '›'}</tspan><tspan class="${time ? 't' : 's'}"> ${xml(fitText(act.label, 11, labelW))}</tspan></text>
+${time ? `<text class="s" ${endText(W, 42 + barW, 49)} font-family="${FONT}" font-size="11" font-variant-numeric="tabular-nums">${time}</text>` : ''}`
 }
 
 const plannedSvg = (W: number, p: Planned): string => {
@@ -938,6 +974,29 @@ export const register: Register = (on, options) => {
     return { result: matched ? 'ok' : `ignored: no panel row for agent ${agentId}` }
   })
 
+  // What each subagent is doing: the tool it called last, timed while it runs.
+  on('tool.call', async ($, e, next) => {
+    const agentId = e.agentId
+    if (!agentId || e.tool === TOOL || e.tool === STEP_TOOL) return next(e)
+    const callId = e.tool_use_id
+    const startedAt = await $.clock.now()
+    const label = activityOf(e.tool, e as unknown as Record<string, unknown>)
+    await update($, agents, list =>
+      list.some(a => a.agentId === agentId) ? list.map(a => (a.agentId === agentId ? { ...a, activity: { label, callId, startedAt } } : a)) : list,
+    )
+    await update($, now, () => startedAt)
+    try {
+      return await next(e)
+    } finally {
+      const endedAt = await $.clock.now()
+      // Only this call's own activity: a later call of the same agent may have replaced it.
+      const isThis = (a: AgentRun) => a.agentId === agentId && a.activity?.startedAt === startedAt && a.activity.callId === callId
+      await update($, agents, list =>
+        list.some(isThis) ? list.map(a => (isThis(a) && a.activity ? { ...a, activity: { ...a.activity, endedAt } } : a)) : list,
+      )
+    }
+  })
+
   // Safety net: worker launches move the faint layer even if the orchestrator forgets to report.
   on('tool.call', { tool: 'Agent' }, async ($, e, next) => {
     const type = String(e.subagent_type ?? '')
@@ -1115,7 +1174,8 @@ export const register: Register = (on, options) => {
       }
       const shownDone = p.isDoneCollapsed ? 0 : finished.length
       const lines = 1 + (isEmpty ? 1 : 0) + (running.length > 0 ? 1 : 0) + (finished.length > 0 ? 1 : 0) + (planned.length > 0 ? 1 : 0)
-      const gridH = headerHeight(title) + lines * LINE_H + (running.length + shownDone) * 66 + planned.length * 46
+      const rowsH = [...running, ...finished.slice(0, shownDone)].reduce((h, a) => h + agentHeight(a), 0)
+      const gridH = headerHeight(title) + lines * LINE_H + rowsH + planned.length * 46
       return (
         <Box flexDirection="column">
           {/* The grid sizes the pane; the content is placed over it, as an
@@ -1129,12 +1189,18 @@ export const register: Register = (on, options) => {
             {isEmpty && <Text dimColor>{s.empty}</Text>}
             {running.length > 0 && section('h-run', `${s.running} · ${running.length}`)}
             {running.map(a => (
-              <Svg key={a.id} source={agentSvg(W, a, at)} alt={`${a.description}: ${modelName(a.model)}, ${s.isRunning}`} width={W} height={66} />
+              <Svg
+                key={a.id}
+                source={agentSvg(W, a, at)}
+                alt={`${a.description}: ${modelName(a.model)}, ${s.isRunning}${a.activity ? `, ${a.activity.label}` : ''}`}
+                width={W}
+                height={agentHeight(a)}
+              />
             ))}
             {finished.length > 0 && toggleDone}
             {!p.isDoneCollapsed &&
               finished.map(a => (
-                <Svg key={a.id} source={agentSvg(W, a, at)} alt={`${a.description}: ${modelName(a.model)}, ${s.isFinished}`} width={W} height={66} />
+                <Svg key={a.id} source={agentSvg(W, a, at)} alt={`${a.description}: ${modelName(a.model)}, ${s.isFinished}`} width={W} height={agentHeight(a)} />
               ))}
             {planned.length > 0 && section('h-plan', `${s.planned} · ${planned.length}`)}
             {planned.map(pl => (
@@ -1155,6 +1221,7 @@ export const register: Register = (on, options) => {
       const progress = progressOf(a)
       const model = runModel(a)
       const steps = a.stepTotal ? `${a.stepDone ?? 0}/${a.stepTotal}${a.stepNote ? ' ' + a.stepNote : ''} · ` : ''
+      const act = activityShown(a)
       return (
         <Box key={a.id} flexDirection="column" marginBottom={1}>
           <Box flexDirection="row" gap={1}>
@@ -1169,6 +1236,14 @@ export const register: Register = (on, options) => {
             {tier === 'other' ? a.type : tierWord(tier)} · {model}
             {a.round > 1 ? ` · ${s.round} ${a.round}` : ''}
           </Text>
+          {act ? (
+            <Text wrap="truncate-end">
+              {'  '}
+              <Text color={color}>›</Text>
+              <Text dimColor={act.endedAt !== undefined}> {act.label}</Text>
+              {act.endedAt === undefined ? <Text dimColor> {fmtTime(Math.max(0, at - act.startedAt))}</Text> : null}
+            </Text>
+          ) : null}
           <Text wrap="truncate-end">
             {'  '}
             {progress === null ? <Text dimColor>{ctxBar(ctx, barW)}</Text> : <Text color={color}>{ctxBar(progress * 100, barW)}</Text>}

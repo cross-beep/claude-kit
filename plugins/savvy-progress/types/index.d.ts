@@ -18,6 +18,15 @@ export type Flow = {
 
 export type AgentStatus = 'running' | 'done' | 'failed'
 
+/** The tool an agent called last: what it does, in a few words, and when it ran. */
+export type Activity = {
+  label: string
+  callId?: string
+  startedAt: number
+  /** Set once the tool returned; absent while it runs. */
+  endedAt?: number
+}
+
 export type AgentRun = {
   id: string
   agentId?: string
@@ -38,6 +47,8 @@ export type AgentRun = {
   stepDone?: number
   stepTotal?: number
   stepNote?: string
+  /** Seen at the agent's tool calls. */
+  activity?: Activity
 }
 
 export type Panel = {
