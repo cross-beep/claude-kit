@@ -535,21 +535,6 @@ const totals = (list: AgentRun[], at: number) => {
 
 // --- desktop drawings: each row is one SVG, as the band above the prompt is.
 
-// The pane's backdrop: a dotted grid as tall as the content laid over it; the
-// row SVGs are transparent, so it shows through between their marks.
-const GRID_STEP = 16
-// A Text or Button row on the desktop is about 20px; the grid errs taller.
-const LINE_H = 24
-// The engine refuses an Svg taller than 4096px, so a long grid is stacked from
-// tiles of at most this height; a multiple of GRID_STEP keeps the dots aligned.
-const GRID_TILE = 4096
-const gridTiles = (H: number) => Array.from({ length: Math.ceil(H / GRID_TILE) }, (_, i) => Math.min(GRID_TILE, H - i * GRID_TILE))
-const gridSvg = (W: number, H: number) => `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-<style>.d{fill:#d9d8d4}@media (prefers-color-scheme: dark){.d{fill:#3a3a38}}</style>
-<defs><pattern id="g" width="${GRID_STEP}" height="${GRID_STEP}" patternUnits="userSpaceOnUse"><circle class="d" cx="${GRID_STEP / 2}" cy="${GRID_STEP / 2}" r="1"/></pattern></defs>
-<rect width="${W}" height="${H}" fill="url(#g)"/>
-</svg>`
-
 const PANE_CSS = `<style>
 .t{fill:#1f1f1f}.s{fill:#6b6b68}.m{fill:#9a9a96}.k{fill:#ecebe8}.ln{stroke:#e4e4e1}.tile{fill:#f4f3f0}
 @media (prefers-color-scheme: dark){.t{fill:#ececec}.s{fill:#a8a8a4}.m{fill:#7d7d79}.k{fill:#2c2c2b}.ln{stroke:#333331}.tile{fill:#262625}}
@@ -1279,40 +1264,29 @@ export const register: Register = (on, options) => {
 
       // In Hebrew the column hugs the right edge: section heads and buttons right-aligned.
       const align = isRtl() ? 'flex-end' : undefined
-      const shownDone = p.isDoneCollapsed ? 0 : finished.length
-      const lines = (isEmpty ? 1 : 0) + (running.length > 0 ? 1 : 0) + (finished.length > 0 ? 1 : 0) + (planned.length > 0 ? 1 : 0)
-      const rowsH = [...running, ...finished.slice(0, shownDone)].reduce((h, a) => h + agentHeight(a), 0)
-      const gridH = headerHeight(title) + lines * LINE_H + rowsH + planned.length * PLANNED_H
       return (
-        <Box flexDirection="column">
-          {/* The grid sizes the pane; the content is placed over it, as an
-              absolute Box paints over the siblings before it. */}
-          {gridTiles(gridH).map((tileH, i) => (
-            <Svg key={`grid-${i}`} source={gridSvg(W, tileH)} alt="dotted grid" width={W} height={tileH} />
+        <Box flexDirection="column" alignItems={align}>
+          <Svg source={headerSvg(W, title, t)} alt={title ? `${title}: ${summary}` : summary} width={W} height={headerHeight(title)} />
+          {isEmpty && <Text dimColor>{s.empty}</Text>}
+          {running.length > 0 && section('h-run', `${s.running} · ${running.length}`)}
+          {running.map(a => (
+            <Svg
+              key={a.id}
+              source={agentSvg(W, a, at)}
+              alt={`${a.description}: ${modelName(a.model)}, ${s.isRunning}${a.activity ? `, ${a.activity.label}` : ''}`}
+              width={W}
+              height={agentHeight(a)}
+            />
           ))}
-          <Box flexDirection="column" position="absolute" top={0} left={0} right={0} alignItems={align}>
-            <Svg source={headerSvg(W, title, t)} alt={title ? `${title}: ${summary}` : summary} width={W} height={headerHeight(title)} />
-            {isEmpty && <Text dimColor>{s.empty}</Text>}
-            {running.length > 0 && section('h-run', `${s.running} · ${running.length}`)}
-            {running.map(a => (
-              <Svg
-                key={a.id}
-                source={agentSvg(W, a, at)}
-                alt={`${a.description}: ${modelName(a.model)}, ${s.isRunning}${a.activity ? `, ${a.activity.label}` : ''}`}
-                width={W}
-                height={agentHeight(a)}
-              />
+          {finished.length > 0 && toggleDone}
+          {!p.isDoneCollapsed &&
+            finished.map(a => (
+              <Svg key={a.id} source={agentSvg(W, a, at)} alt={`${a.description}: ${modelName(a.model)}, ${s.isFinished}`} width={W} height={agentHeight(a)} />
             ))}
-            {finished.length > 0 && toggleDone}
-            {!p.isDoneCollapsed &&
-              finished.map(a => (
-                <Svg key={a.id} source={agentSvg(W, a, at)} alt={`${a.description}: ${modelName(a.model)}, ${s.isFinished}`} width={W} height={agentHeight(a)} />
-              ))}
-            {planned.length > 0 && section('h-plan', `${s.planned} · ${planned.length}`)}
-            {planned.map(pl => (
-              <Svg key={`plan-${pl.n}`} source={plannedSvg(W, pl)} alt={`${pl.n}. ${pl.title}: ${s.isPlanned}`} width={W} height={PLANNED_H} />
-            ))}
-          </Box>
+          {planned.length > 0 && section('h-plan', `${s.planned} · ${planned.length}`)}
+          {planned.map(pl => (
+            <Svg key={`plan-${pl.n}`} source={plannedSvg(W, pl)} alt={`${pl.n}. ${pl.title}: ${s.isPlanned}`} width={W} height={PLANNED_H} />
+          ))}
         </Box>
       )
     }

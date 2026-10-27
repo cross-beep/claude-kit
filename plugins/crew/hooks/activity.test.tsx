@@ -73,10 +73,12 @@ test('scope: the main session and the step tool leave the activity alone', async
 })
 
 for (const surface of ['terminal', 'desktop'] as const) {
-  test(`${surface}: the pane has no collapse button`, async ($, on) => {
+  test(`${surface}: the pane has no collapse button and no dotted backdrop`, async ($, on) => {
     await worker($, on)
     const ui = await $.ui.mount({ plugin: PLUGIN, surface, component: 'Pane', requestId: 'savvy-agents', props: pane })
     expect(await ui.find({ key: 'compact' })).toBeUndefined()
-    expect(JSON.stringify(await ui.drawn())).not.toContain('Collapse')
+    const tree = JSON.stringify(await ui.drawn())
+    expect(tree).not.toContain('Collapse')
+    expect(tree).not.toContain('<pattern')
   })
 }
