@@ -608,6 +608,33 @@ const CRAB_CSS = `<style>
 @keyframes wave{50%{transform:skewY(-12deg) scaleX(.85)}}
 .c-explore.run .it{transform-origin:50% 100%;animation:fence .5s ease-in-out infinite}
 @keyframes fence{50%{transform:rotate(25deg)}}
+.c-wizard.run .wand{transform-origin:50% 100%;animation:wz-wave 1s ease-in-out infinite}
+.c-wizard.run .spark{animation:blink .5s steps(1) infinite}
+.c-wizard.run .hs{animation:blink 1s steps(1) infinite -.5s}
+@keyframes wz-wave{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(20deg)}}
+.c-ninja.run .tail{transform-origin:100% 50%;animation:nj-flut .25s steps(1) infinite}
+.c-ninja.run .shu{transform-origin:50% 50%;animation:nj-spin .25s steps(2) infinite}
+@keyframes nj-flut{50%{transform:skewY(-15deg) scaleX(.85)}}@keyframes nj-spin{to{transform:rotate(90deg)}}
+.c-painter.run .brush{transform-origin:50% 100%;animation:pt-dab .5s ease-in-out infinite}
+.c-painter.run .drop{animation:pt-drip 1s linear infinite}
+@keyframes pt-dab{50%{transform:rotate(-25deg)}}
+@keyframes pt-drip{0%{transform:translateY(0);opacity:0}20%{opacity:1}100%{transform:translateY(6px);opacity:0}}
+.c-photo .fl{opacity:0}
+.c-photo.run .fl{animation:ph-flash 1s steps(1) infinite}
+@keyframes ph-flash{0%{opacity:1}12%,100%{opacity:0}}
+.c-scientist.run .flask{transform-origin:50% 100%;animation:sc-swirl 1s ease-in-out infinite}
+.c-scientist.run .b1{animation:sc-rise 1s linear infinite}.c-scientist.run .b2{animation:sc-rise 1s linear infinite -.5s}
+@keyframes sc-swirl{25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+@keyframes sc-rise{0%{transform:translateY(2px);opacity:0}30%{opacity:1}100%{transform:translateY(-3px);opacity:0}}
+.c-dj.run .cl,.c-dj.run .cr{transform-origin:50% 50%;animation:dj-bass .5s steps(1) infinite}
+.c-dj.run .n1{animation:dj-note 1s linear infinite}.c-dj.run .n2{animation:dj-note 1s linear infinite -.5s}
+@keyframes dj-bass{50%{transform:scale(1.2)}}
+@keyframes dj-note{0%{transform:translateY(2px);opacity:0}30%{opacity:1}100%{transform:translateY(-4px);opacity:0}}
+.c-banker.run .fan{transform-origin:50% 100%;animation:bk-fan .5s ease-in-out infinite}
+.c-banker.run .r1,.c-banker.run .r2{transform-origin:50% 50%;animation:bk-fall 1s linear infinite}.c-banker.run .r2{animation-delay:-.5s}
+.c-banker.run .sh{animation:blink 1s steps(1) infinite}
+@keyframes bk-fan{50%{transform:rotate(-20deg)}}
+@keyframes bk-fall{0%{transform:translateY(-3px) rotate(-12deg);opacity:0}20%,75%{opacity:1}50%{transform:translateY(3px) rotate(10deg)}100%{transform:translateY(8px) rotate(-8deg);opacity:0}}
 @media (prefers-reduced-motion: reduce){.run,.run g{animation:none!important}}
 </style>`
 
@@ -655,10 +682,117 @@ const COSTUMES: Record<string, (f: Fill, t: string) => void> = {
     f(7, 11, 11, 1, INK); f(18, 11, 4, 3, INK)
     f(27, 6, 1, 9, '#C9CCD2', 'it'); f(26, 15, 3, 1, '#7A4A26', 'it')
   },
+  // Wizard: pointed hat with a gold band; the wand waves, the hat's stars and the spark twinkle.
+  wizard: f => {
+    crabBody(f, -4, 'wand')
+    stamp(f, 6, 0, ['.........pp.......', '.........ppp......', '........pppp......', '........ppppp.....', '.......pppppp.....', '......pppppppp....', '.....pppppppppp...', '....yyyyyyyyyyyy..', '.pppppppppppppppp.', 'aaaaaaaaaaaaaaaaaa'], { p: '#6B4FBB', y: '#F5C542', a: '#4A3590' })
+    f(25, 3, 1, 7, '#5A3519', 'wand')
+    f(25, 2, 1, 1, '#fff', 'wand')
+    f(16, 3, 1, 1, '#F5C542', 'hs')
+    f(18, 5, 1, 1, '#F5C542', 'hs')
+    f(13, 6, 1, 1, '#F5C542', 'hs')
+    f(27, -1, 1, 3, '#F5C542', 'spark')
+    f(26, 0, 3, 1, '#F5C542', 'spark')
+  },
+  // Ninja: black hood and mask, red headband; the tails flutter and the shuriken spins.
+  ninja: f => {
+    crabBody(f, -4)
+    f(10, 7, 10, 1, '#2B2A33')
+    f(8, 8, 14, 2, '#2B2A33')
+    f(7, 10, 16, 1, '#2B2A33')
+    f(7, 11, 16, 1, '#C8423B')
+    f(7, 14, 16, 2, '#2B2A33')
+    f(6, 11, 1, 1, '#C8423B')
+    f(4, 11, 2, 1, '#C8423B', 'tail')
+    f(2, 10, 2, 1, '#C8423B', 'tail')
+    f(0, 9, 2, 1, '#C8423B', 'tail')
+    f(4, 12, 2, 1, '#C8423B', 'tail')
+    f(2, 13, 2, 1, '#C8423B', 'tail')
+    stamp(f, 23, 3, ['..g..', '..g..', 'ggagg', '..g..', '..g..'], { g: '#8E929A', a: '#3A3A3C' }, 'shu')
+  },
+  // Painter: beret and palette; the brush dabs and a drop of paint drips.
+  painter: f => {
+    crabBody(f, -4, 'brush')
+    stamp(f, 7, 5, ['........g........', '...mmmmmmmmmm....', '.mmmmmmmmmmmmmm..', 'mmmmmmmmmmmmmmmm.', '.aaaaaaaaaaaaaaaa'], { g: '#55514C', m: '#D9467A', a: '#A8325C' })
+    stamp(f, 0, 15, ['.yyy.', 'yryay', 'yuyyy', '.yyy.'], { y: '#E9D3A6', r: '#D0453F', a: '#F5C542', u: '#378ADD' })
+    f(25, 4, 1, 6, '#7A4A26', 'brush')
+    f(25, 3, 1, 1, '#C9CCD2', 'brush')
+    f(25, 1, 1, 2, '#D9467A', 'brush')
+    f(24, 4, 1, 1, '#D9467A', 'drop')
+  },
+  // Photographer: cap and camera; the flash fires once a second.
+  photo: f => {
+    crabBody(f)
+    stamp(f, 3, 6, ['........tttttttt....', '......tttttttttttt..', '.....tttttttttttttt.', 'aaaaaatttttttttttttt'], { t: '#2A9D8F', a: '#1E6E64' })
+    stamp(f, 10, 14, ['.ww...ggg.', 'gggggggggg', 'gggaaaaggg', 'gggabuaggg', 'gggauuaggg', 'gggaaaaggg'], { w: '#E6E8EE', g: '#3A3A3C', a: '#8E929A', b: '#fff', u: '#7FB8E6' })
+    f(11, 12, 2, 5, '#FFFBE0', 'fl')
+    f(9, 14, 6, 1, '#FFFBE0', 'fl')
+    f(14, 12, 1, 1, '#FFFBE0', 'fl')
+    f(9, 16, 1, 1, '#FFFBE0', 'fl')
+    f(14, 16, 1, 1, '#FFFBE0', 'fl')
+  },
+  // Scientist: lab cap and goggles; the flask swirls and bubbles rise.
+  scientist: f => {
+    crabBody(f, -4, 'flask')
+    stamp(f, 6, 6, ['.g...gg....gg...g.', 'gwg.gwwg..gwwg.gwg', 'gwwwwwwwwwwwwwwwwg', '.gwwwwwwwwwwwwwwg.', '..................', '..aaaa......aaaa..', '.na..annnnnna..an.', '..a..a......a..a..', '..aaaa......aaaa..'], { g: '#B9B7AE', w: '#ECEAE3', a: '#4A4A48', n: '#2FA36B' })
+    f(9, 12, 2, 2, 'rgba(169,214,245,.45)')
+    f(19, 12, 2, 2, 'rgba(169,214,245,.45)')
+    stamp(f, 24, 4, ['.ggg.', '.g.g.', '.gng.', 'gnnag', 'gnnng', 'ggggg'], { g: '#C9CCD2', n: '#2FA36B', a: '#BFF0D2' }, 'flask')
+    f(26, 2, 1, 1, '#9BE3B8', 'b1')
+    f(25, 0, 1, 1, '#9BE3B8', 'b2')
+  },
+  // DJ: headphones that pump to the bass; notes float up on both sides.
+  dj: f => {
+    crabBody(f)
+    f(8, 4, 14, 1, '#3A3A3C')
+    f(7, 5, 1, 1, '#3A3A3C')
+    f(22, 5, 1, 1, '#3A3A3C')
+    f(6, 6, 1, 3, '#3A3A3C')
+    f(23, 6, 1, 3, '#3A3A3C')
+    f(4, 9, 3, 5, '#C04DB0', 'cl')
+    f(6, 10, 1, 3, '#2B2A33', 'cl')
+    f(23, 9, 3, 5, '#C04DB0', 'cr')
+    f(23, 10, 1, 3, '#2B2A33', 'cr')
+    stamp(f, 25, 1, ['..m.', '..mm', '..m.', 'mmm.', 'mm..'], { m: '#C04DB0' }, 'n1')
+    stamp(f, 1, 3, ['..y.', '..yy', '..y.', 'yyy.', 'yy..'], { y: '#F5C542' }, 'n2')
+  },
+  // Banker: sunglasses and a fan of bills; bills rain down, the glasses glint.
+  banker: f => {
+    crabBody(f, -4, 'fan')
+    f(7, 12, 1, 1, '#1F1E1D')
+    f(8, 12, 4, 2, '#1F1E1D')
+    f(12, 12, 6, 1, '#1F1E1D')
+    f(18, 12, 4, 2, '#1F1E1D')
+    f(22, 12, 1, 1, '#1F1E1D')
+    stamp(f, 23, 4, ['nnnnn..', 'naban..', 'nnddddd', '..debed', '..ddddd', '..n....'], { n: '#58AD67', a: '#A8DA9E', b: '#2F8F4E', d: '#6DBE7A', e: '#BFE5B5' }, 'fan')
+    f(9, 12, 1, 1, '#fff', 'sh')
+    f(19, 12, 1, 1, '#fff', 'sh')
+    stamp(f, 0, 1, ['nnnnn', 'naban', 'nnnnn'], { n: '#6DBE7A', a: '#BFE5B5', b: '#2F8F4E' }, 'r1')
+    stamp(f, 12, -3, ['nnnnn', 'naban', 'nnnnn'], { n: '#58AD67', a: '#A8DA9E', b: '#2F8F4E' }, 'r2')
+  },
   other: f => crabBody(f),
 }
 
-const costumeOf = (type: string): string => (type === 'Explore' ? 'explore' : tierOf(type))
+// Claude Code's own subagent types each wear a costume of their own.
+const TYPE_COSTUME: Record<string, string> = {
+  Explore: 'explore',
+  Plan: 'scientist',
+  'claude-code-guide': 'wizard',
+  'statusline-setup': 'painter',
+  'general-purpose': 'ninja',
+}
+// Any other type wears one of these, picked from its name: the same type always looks the same.
+const SPARE_COSTUMES = ['photo', 'dj', 'banker']
+
+const hashOf = (s: string): number => [...s].reduce((h, ch) => (h * 31 + (ch.codePointAt(0) ?? 0)) >>> 0, 0)
+
+// A savvy tier's costume, else the type's own, else a spare one.
+const costumeOf = (type: string): string => {
+  const tier = tierOf(type)
+  if (tier !== 'other') return tier
+  const bare = type.replace(/^[^:]*:/, '')
+  return TYPE_COSTUME[bare] ?? SPARE_COSTUMES[hashOf(bare) % SPARE_COSTUMES.length] ?? 'other'
+}
 
 const CRAB_SCALE = 1.1
 
