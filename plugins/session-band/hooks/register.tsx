@@ -348,6 +348,8 @@ export const register: Register = (on, options) => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const s = await read($, stats)
     if (e.props.hasSurvey || s.turn === 0 || (await read($, isHidden))) return next(e)
+    // The `showCost` option: off, the band draws no money.
+    const showCost = options.showCost === true
 
     const t = tr()
     const ui = $.ui.resolve(e)
@@ -398,12 +400,14 @@ export const register: Register = (on, options) => {
             <Text bold wrap="truncate-end">{tier <= 1 || s.speed === null ? speed : `${s.speed}/s`}</Text>
           </Box>
         ) : null}
-        <Box flexDirection="row" alignItems="center" columnGap={1} flexShrink={0}>
-          {Svg ? <Svg source={MONEY_ICON} alt={t.cost} width={icon} height={icon} /> : <Text color={MONEY}>$</Text>}
-          <Text bold color={MONEY}>{turnCost}</Text>
-          {tier <= 2 ? <Text dimColor>|</Text> : null}
-          {tier <= 2 ? <Text bold>{usd(s.total)}</Text> : null}
-        </Box>
+        {showCost ? (
+          <Box flexDirection="row" alignItems="center" columnGap={1} flexShrink={0}>
+            {Svg ? <Svg source={MONEY_ICON} alt={t.cost} width={icon} height={icon} /> : <Text color={MONEY}>$</Text>}
+            <Text bold color={MONEY}>{turnCost}</Text>
+            {tier <= 2 ? <Text dimColor>|</Text> : null}
+            {tier <= 2 ? <Text bold>{usd(s.total)}</Text> : null}
+          </Box>
+        ) : null}
         <Box flexDirection="row" alignItems="center" columnGap={1} flexShrink={0}>
           {Svg ? <Svg source={cacheIcon(cacheColor)} alt={t.cache} width={icon} height={icon} /> : <Text color={cacheColor}>⧗</Text>}
           <Text bold color={level ?? undefined}>{cacheText}</Text>

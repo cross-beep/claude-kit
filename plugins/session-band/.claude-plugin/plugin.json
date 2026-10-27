@@ -1,7 +1,7 @@
 {
   "name": "session-band",
   "version": "0.3.0",
-  "description": "Band above the prompt: turn number, output speed, turn and session cost, prompt cache countdown and context fill; notifies before the cache expires.",
+  "description": "Band above the prompt: turn number, output speed, prompt cache countdown and context fill (turn and session cost optional); notifies before the cache expires.",
   "author": {
     "name": "johnnyvizz",
     "url": "https://github.com/johnnyvizz"
@@ -18,6 +18,12 @@
         "en",
         "fr"
       ]
+    },
+    "showCost": {
+      "type": "boolean",
+      "title": "Show the cost",
+      "description": "Draw the turn and session cost in the band; off, no money is shown",
+      "default": false
     }
   },
   "homepage": "https://github.com/cross-beep/claude-kit/tree/main/plugins/session-band",

@@ -1,7 +1,7 @@
 {
   "name": "savvy-progress",
   "version": "1.3.0",
-  "description": "Progress bar above the prompt for /savvy-flow, plus an agents panel (/agents-info): running, finished and planned subagents with model, task progress, context, cost and time.",
+  "description": "Progress bar above the prompt for /savvy-flow, plus an agents panel (/agents-info): running, finished and planned subagents with model, task progress, live activity, context, tokens and time (cost estimate optional).",
   "author": {
     "name": "johnnyvizz",
     "url": "https://github.com/johnnyvizz"
@@ -30,6 +30,12 @@
         "savvy",
         "any"
       ]
+    },
+    "showCost": {
+      "type": "boolean",
+      "title": "Show the cost estimate",
+      "description": "Draw the estimated cost in the agents panel; off, only tokens and time are shown",
+      "default": false
     }
   },
   "homepage": "https://github.com/cross-beep/claude-kit/tree/main/plugins/savvy-progress",

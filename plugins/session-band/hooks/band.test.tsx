@@ -49,3 +49,16 @@ test('fr: the option wins over both', { options: { language: 'fr' } }, async ($,
     text: 'Démo du cache : 7 min restantes, la prochaine réponse le réinitialise.',
   })
 })
+
+// Off by default: no money in the band; the option brings the turn and session cost back.
+for (const surface of ['terminal', 'desktop'] as const) {
+  test(`${surface}: no cost unless the option asks for it`, async ($, on) => {
+    await session($, on, { LANG: 'en_US.UTF-8' })
+    expect(await shows($, surface, /\$/)).toBe(0)
+  })
+
+  test(`${surface}: the option shows the cost`, { options: { showCost: true } }, async ($, on) => {
+    await session($, on, { LANG: 'en_US.UTF-8' })
+    expect(await shows($, surface, /^\$0\.50$/)).toBe(1)
+  })
+}

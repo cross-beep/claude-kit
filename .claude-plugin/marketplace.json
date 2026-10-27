@@ -25,7 +25,7 @@
     {
       "name": "session-band",
       "source": "./plugins/session-band",
-      "description": "Mod: band above the prompt with turn, speed, cost, prompt cache countdown and context; notifies before the cache expires.",
+      "description": "Mod: band above the prompt with turn, speed, prompt cache countdown, context and optional cost; notifies before the cache expires.",
       "version": "0.3.0",
       "category": "mod"
     }

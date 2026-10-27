@@ -3,6 +3,8 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
 const PLUGIN = 'savvy-progress'
+// The estimate is drawn only with the option on.
+const SHOW_COST = { options: { showCost: true } }
 const pane = { title: '', isFocused: false, bodyColumns: 60, placement: 'dock', scroll: { offset: 0, bodyRows: 30 }, view: {} } as const
 
 type Usage = { input_tokens: number; output_tokens: number; cache_read_input_tokens: number; cache_creation_input_tokens: number }
@@ -48,7 +50,7 @@ const PRICED: readonly (readonly [model: string, shown: string])[] = [
 ]
 
 for (const [model, shown] of PRICED) {
-  test(`cost: a turn on ${model} shows ≈${shown}`, async ($, on) => {
+  test(`cost: a turn on ${model} shows ≈${shown}`, SHOW_COST, async ($, on) => {
     await worker($, on, model)
     await ($.turn.complete as (e: unknown) => Promise<unknown>)({ agentId: 'a1', reason: 'answer', answer: 'ok', usage: { model, ...TURN } })
 
@@ -59,14 +61,14 @@ for (const [model, shown] of PRICED) {
 // Haiku 5.5 is priced by prompt length, per request: 120K of prompt is over the 100K line.
 const LONG: Usage = { input_tokens: 20_000, output_tokens: 10_000, cache_read_input_tokens: 50_000, cache_creation_input_tokens: 50_000 }
 
-test('cost: a Haiku 5.5 request over 100K prompt tokens pays the long-prompt prices', async ($, on) => {
+test('cost: a Haiku 5.5 request over 100K prompt tokens pays the long-prompt prices', SHOW_COST, async ($, on) => {
   await worker($, on, 'claude-haiku-5-5', LONG)
   await step($, 'claude-haiku-5-5')
   // (20K × 0.50 + 10K × 2.50 + 50K × 0.05 + 50K × 1.00) / 1M = 0.0875; at the short-prompt prices it is 0.0175.
   expect(await shows($, /≈\$0\.09 /)).toBeDefined()
 })
 
-test('cost: Haiku 4.5 has one price whatever the prompt length', async ($, on) => {
+test('cost: Haiku 4.5 has one price whatever the prompt length', SHOW_COST, async ($, on) => {
   await worker($, on, 'claude-haiku-4-5', LONG)
   await step($, 'claude-haiku-4-5')
   // (20K × 1 + 10K × 5 + 50K × 0.10 + 50K × 2) / 1M = 0.175
@@ -81,3 +83,12 @@ for (const [model, percent] of [['claude-haiku-5-5', 13], ['claude-haiku-4-5', 6
     expect(await shows($, new RegExp(`ctx ${percent}%`))).toBeDefined()
   })
 }
+
+// Off by default: no estimate in the panel, tokens and time still shown.
+test('cost: hidden unless the option asks for it', async ($, on) => {
+  await worker($, on, 'claude-opus-5-5')
+  await ($.turn.complete as (e: unknown) => Promise<unknown>)({ agentId: 'a1', reason: 'answer', answer: 'ok', usage: { model: 'claude-opus-5-5', ...TURN } })
+  const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: 'savvy-agents', props: pane })
+  expect(await ui.find({ type: 'Text', text: /\$/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /5\.0M tokens/ })).toBeDefined()
+})
