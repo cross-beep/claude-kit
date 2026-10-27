@@ -6,7 +6,6 @@ import type { AgentRun, Flow, Panel, Phase, PlannedTask } from '../types'
 const flow = atom({ plugin: 'savvy-progress', key: 'flow' } as const, null)
 const agents = atom({ plugin: 'savvy-progress', key: 'agents' } as const, [])
 const panel = atom({ plugin: 'savvy-progress', key: 'panel' } as const, {
-  isCompact: false,
   isDoneCollapsed: false,
   autoOpenedFor: '',
 })
@@ -53,8 +52,6 @@ const STRINGS = {
     cost: 'Cost',
     tokens: 'Tokens',
     time: 'Time',
-    collapse: 'Collapse',
-    expand: 'Expand',
     running: 'Running',
     finished: 'Finished',
     planned: 'Planned',
@@ -63,7 +60,6 @@ const STRINGS = {
     failed: 'error',
     after: 'after',
     tokensWord: 'tokens',
-    agentsCount: 'agents',
     isRunning: 'running',
     isFinished: 'finished',
     isPlanned: 'planned',
@@ -84,8 +80,6 @@ const STRINGS = {
     cost: 'Стоимость',
     tokens: 'Токены',
     time: 'Время',
-    collapse: 'Свернуть',
-    expand: 'Развернуть',
     running: 'Работают',
     finished: 'Завершены',
     planned: 'Запланированы',
@@ -94,7 +88,6 @@ const STRINGS = {
     failed: 'ошибка',
     after: 'после',
     tokensWord: 'токенов',
-    agentsCount: 'агентов',
     isRunning: 'работает',
     isFinished: 'завершён',
     isPlanned: 'запланирована',
@@ -115,8 +108,6 @@ const STRINGS = {
     cost: 'עלות',
     tokens: 'טוקנים',
     time: 'זמן',
-    collapse: 'כיווץ',
-    expand: 'הרחבה',
     running: 'פועלים',
     finished: 'הסתיימו',
     planned: 'מתוכננים',
@@ -125,7 +116,6 @@ const STRINGS = {
     failed: 'שגיאה',
     after: 'אחרי',
     tokensWord: 'טוקנים',
-    agentsCount: 'סוכנים',
     isRunning: 'פועל',
     isFinished: 'הסתיים',
     isPlanned: 'מתוכנן',
@@ -146,8 +136,6 @@ const STRINGS = {
     cost: 'Coût',
     tokens: 'Tokens',
     time: 'Temps',
-    collapse: 'Réduire',
-    expand: 'Développer',
     running: 'En cours',
     finished: 'Terminés',
     planned: 'Planifiées',
@@ -156,7 +144,6 @@ const STRINGS = {
     failed: 'erreur',
     after: 'après',
     tokensWord: 'tokens',
-    agentsCount: 'agents',
     isRunning: 'en cours',
     isFinished: 'terminé',
     isPlanned: 'planifiée',
@@ -168,7 +155,7 @@ const STRINGS = {
     tasks: 'Tâches',
     review: 'Révision',
     busy: 'en cours',
-    ctx: 'ctx',
+    ctx: 'contexte',
     tier: { light: 'light', medium: 'medium', careful: 'careful', heavy: 'heavy', fable: 'fable', other: 'other' },
     effort: { low: 'low', medium: 'medium', high: 'high', xhigh: 'xhigh', max: 'max' },
   },
@@ -820,27 +807,6 @@ ${statusMark(mx(W, W - 8), 16, 'planned', color)}
   )
 }
 
-const compactSvg = (W: number, list: AgentRun[], planned: Planned[], t: ReturnType<typeof totals>): string => {
-  const icons = [
-    ...list.filter(a => a.status === 'running').map(a => ({ k: costumeOf(a.type), c: colorOf(tierOf(a.type)), s: 'running', dim: false })),
-    ...list.filter(a => a.status !== 'running').map(a => ({ k: costumeOf(a.type), c: colorOf(tierOf(a.type)), s: a.status, dim: false })),
-    ...planned.map(p => ({ k: p.tier in TIER_COLOR ? p.tier : 'other', c: colorOf(p.tier), s: 'planned', dim: true })),
-  ]
-  const fit = Math.max(1, Math.floor((W - 150) / 36))
-  const shown = icons.slice(0, fit)
-  const more = icons.length - shown.length
-  const body = shown
-    .map((ic, i) => rowCrab(W, i * 36, 0, ic.k, ic.dim, ic.s === 'running') + (ic.s === 'running' ? `<circle class="live" cx="${mx(W, i * 36 + 32)}" cy="4" r="3" fill="${ic.c}"/>` : ''))
-    .join('')
-  const x = shown.length * 36 + (more ? 4 : 0)
-  return svg(
-    W,
-    32,
-    `${body}${more ? `<text class="s" ${startText(W, x, 21, false)} font-family="${FONT}" font-size="12">+${more}</text>` : ''}
-<text class="s" ${endText(W, W, 21)} font-family="${FONT}" font-size="12" font-variant-numeric="tabular-nums">${costText(t.cost, ' · ')}${fmtTokens(t.tokens)} · ${fmtTime(t.time)}</text>`,
-  )
-}
-
 // --- terminal drawing: the same rows in text.
 
 const ctxBar = (pct: number, width: number): string => {
@@ -1147,14 +1113,6 @@ export const register: Register = (on, options) => {
     // The pane's title says "Agents"; inside, only the flow's own name.
     const title = f && !f.isFinished ? f.title : ''
 
-    const toggleCompact = (
-      <Button
-        key="compact"
-        label={p.isCompact ? s.expand : s.collapse}
-        plain
-        onPress={() => update($, panel, prev => ({ ...prev, isCompact: !prev.isCompact }))}
-      />
-    )
     const toggleDone = (
       <Button
         key="done"
@@ -1177,16 +1135,8 @@ export const register: Register = (on, options) => {
 
       // In Hebrew the column hugs the right edge: section heads and buttons right-aligned.
       const align = isRtl() ? 'flex-end' : undefined
-      if (p.isCompact) {
-        return (
-          <Box flexDirection="column" gap={1} alignItems={align}>
-            <Svg source={compactSvg(W, list, planned, t)} alt={`${list.length} ${s.agentsCount}, ${summary}`} width={W} height={32} />
-            {toggleCompact}
-          </Box>
-        )
-      }
       const shownDone = p.isDoneCollapsed ? 0 : finished.length
-      const lines = 1 + (isEmpty ? 1 : 0) + (running.length > 0 ? 1 : 0) + (finished.length > 0 ? 1 : 0) + (planned.length > 0 ? 1 : 0)
+      const lines = (isEmpty ? 1 : 0) + (running.length > 0 ? 1 : 0) + (finished.length > 0 ? 1 : 0) + (planned.length > 0 ? 1 : 0)
       const rowsH = [...running, ...finished.slice(0, shownDone)].reduce((h, a) => h + agentHeight(a), 0)
       const gridH = headerHeight(title) + lines * LINE_H + rowsH + planned.length * 46
       return (
@@ -1198,7 +1148,6 @@ export const register: Register = (on, options) => {
           ))}
           <Box flexDirection="column" position="absolute" top={0} left={0} right={0} alignItems={align}>
             <Svg source={headerSvg(W, title, t)} alt={title ? `${title}: ${summary}` : summary} width={W} height={headerHeight(title)} />
-            {toggleCompact}
             {isEmpty && <Text dimColor>{s.empty}</Text>}
             {running.length > 0 && section('h-run', `${s.running} · ${running.length}`)}
             {running.map(a => (
@@ -1271,53 +1220,37 @@ export const register: Register = (on, options) => {
 
     return (
       <Box flexDirection="column">
-        <Box flexDirection="row" justifyContent="space-between">
+        {title ? (
           <Text bold wrap="truncate-end">
             {title}
           </Text>
-          {toggleCompact}
-        </Box>
+        ) : null}
         <Text dimColor>
           {costText(t.cost, ' · ')}{fmtTokens(t.tokens)} {s.tokensWord} · {fmtTime(t.time)}
         </Text>
-        {p.isCompact ? (
-          <Text wrap="truncate-end">
-            {[...running, ...finished].map(a => (
-              <Text key={a.id} color={colorOf(tierOf(a.type))}>
-                {STATUS_GLYPH[a.status]}{' '}
-              </Text>
-            ))}
-            {planned.map(pl => (
-              <Text key={`plan-${pl.n}`} dimColor>
-                ◷{' '}
-              </Text>
-            ))}
-          </Text>
-        ) : (
-          <Box flexDirection="column" marginTop={1}>
-            {isEmpty && <Text dimColor>{s.empty}</Text>}
-            {running.length > 0 && <Text dimColor>{s.running} · {running.length}</Text>}
-            {running.map(row)}
-            {finished.length > 0 && toggleDone}
-            {!p.isDoneCollapsed && finished.map(row)}
-            {planned.length > 0 && <Text dimColor>{s.planned} · {planned.length}</Text>}
-            {planned.map(pl => {
-              const tier = pl.tier in TIER_COLOR ? pl.tier : 'other'
-              return (
-                <Box key={`plan-${pl.n}`} flexDirection="column" marginBottom={1}>
-                  <Text dimColor wrap="truncate-end">
-                    <Text color={colorOf(tier)}>▢</Text> {pl.n}. {pl.title} ◷
-                  </Text>
-                  <Text dimColor wrap="truncate-end">
-                    {'  '}
-                    {tierWord(tier)} · {tierModel(tier)}
-                    {pl.after.length ? ` · ${s.after} ${pl.after.join(', ')}` : ''}
-                  </Text>
-                </Box>
-              )
-            })}
-          </Box>
-        )}
+        <Box flexDirection="column" marginTop={1}>
+          {isEmpty && <Text dimColor>{s.empty}</Text>}
+          {running.length > 0 && <Text dimColor>{s.running} · {running.length}</Text>}
+          {running.map(row)}
+          {finished.length > 0 && toggleDone}
+          {!p.isDoneCollapsed && finished.map(row)}
+          {planned.length > 0 && <Text dimColor>{s.planned} · {planned.length}</Text>}
+          {planned.map(pl => {
+            const tier = pl.tier in TIER_COLOR ? pl.tier : 'other'
+            return (
+              <Box key={`plan-${pl.n}`} flexDirection="column" marginBottom={1}>
+                <Text dimColor wrap="truncate-end">
+                  <Text color={colorOf(tier)}>▢</Text> {pl.n}. {pl.title} ◷
+                </Text>
+                <Text dimColor wrap="truncate-end">
+                  {'  '}
+                  {tierWord(tier)} · {tierModel(tier)}
+                  {pl.after.length ? ` · ${s.after} ${pl.after.join(', ')}` : ''}
+                </Text>
+              </Box>
+            )
+          })}
+        </Box>
       </Box>
     )
   })

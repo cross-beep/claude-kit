@@ -14,6 +14,7 @@ async function session($: Engine, on: On, env: Record<string, string>, settings:
   on('tool.register', async () => ({ value: { tool: 'progress' } }) as never)
   on('command.register', async () => ({ value: { command: 'agents-info' } }) as never)
   on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('agent.spawn', () => ({ model: 'claude-opus-5-5', agentId: 'a1' }))
   await $.session.start({ source: 'startup', cwd: '/repo', surface: 'terminal', isInteractive: true } as never)
   return $.tool.call({ tool: 'mcp__savvy-progress__progress', title: 'Livrer', total: 4, done: 1, phase: 'delegate' } as never)
 }
@@ -44,4 +45,14 @@ test('fr: the option wins over both', { options: { language: 'fr' } }, async ($,
 test('en: an English locale stays English', async ($, on) => {
   expect(await session($, on, { LANG: 'en_US.UTF-8' })).toMatchObject({ result: 'ok: Tasks 1/4' })
   expect(await label($, /^Tasks 1\/4$/)).toBe(1)
+})
+
+test('fr: an agent row spells out the context', { options: { language: 'fr' } }, async ($, on) => {
+  await session($, on, { LANG: 'en_US.UTF-8' })
+  await $.agent.spawn({ tool_use_id: 't1', prompt: 'p', description: 'Lancer les tests', subagentType: 'savvy-light', provider: 'engine', parentModel: 'claude-opus-5-5', background: false, fork: false } as never)
+  const pane = { title: '', isFocused: false, bodyColumns: 80, placement: 'dock', scroll: { offset: 0, bodyRows: 30 }, view: {} } as const
+  const ui = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'Pane', requestId: 'savvy-agents', props: pane })
+  const tree = JSON.stringify(await ui.drawn())
+  expect(tree).toContain('contexte')
+  expect(tree).not.toContain('Réduire')
 })
