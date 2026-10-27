@@ -2,7 +2,7 @@ import type { On } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 
-const PLUGIN = 'savvy-progress'
+const PLUGIN = 'crew'
 const pane = { title: '', isFocused: false, bodyColumns: 80, placement: 'dock', scroll: { offset: 0, bodyRows: 30 }, view: {} } as const
 
 // A session with one savvy worker, a1, running; every tool call answers after `toolMs`.
@@ -66,7 +66,7 @@ test('scope: the main session and the step tool leave the activity alone', async
   await worker($, on)
   await $.tool.call({ tool: 'Grep', pattern: 'TODO', agentId: 'a1' } as never)
   await $.tool.call({ tool: 'Bash', command: 'git status' } as never)
-  await $.tool.call({ tool: 'mcp__savvy-progress__step', done: 1, total: 3, agentId: 'a1' } as never)
+  await $.tool.call({ tool: 'mcp__crew__step', done: 1, total: 3, agentId: 'a1' } as never)
   const tree = await drawn($, 'terminal')
   expect(tree).toContain('Grep · TODO')
   expect(tree).not.toContain('git status')

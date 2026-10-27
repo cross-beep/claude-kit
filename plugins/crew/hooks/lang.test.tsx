@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
-const PLUGIN = 'savvy-progress'
+const PLUGIN = 'crew'
 const BAND = { component: 'AbovePrompt', props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 100 } as never } as const
 
 // A session started under `env` and Claude Code `settings`, with one flow reported.
@@ -16,7 +16,7 @@ async function session($: Engine, on: On, env: Record<string, string>, settings:
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('agent.spawn', () => ({ model: 'claude-opus-5-5', agentId: 'a1' }))
   await $.session.start({ source: 'startup', cwd: '/repo', surface: 'terminal', isInteractive: true } as never)
-  return $.tool.call({ tool: 'mcp__savvy-progress__progress', title: 'Livrer', total: 4, done: 1, phase: 'delegate' } as never)
+  return $.tool.call({ tool: 'mcp__crew__progress', title: 'Livrer', total: 4, done: 1, phase: 'delegate' } as never)
 }
 
 async function label($: Engine, text: RegExp): Promise<number> {
@@ -29,7 +29,7 @@ async function label($: Engine, text: RegExp): Promise<number> {
 test('fr: a French locale draws the band in French', async ($, on) => {
   expect(await session($, on, { LANG: 'fr_CA.UTF-8' })).toMatchObject({ result: 'ok: Tâches 1/4' })
   expect(await label($, /^Tâches 1\/4$/)).toBe(1)
-  expect(await $.tool.call({ tool: 'mcp__savvy-progress__progress', phase: 'review' } as never)).toMatchObject({ result: 'ok: Révision 1/4' })
+  expect(await $.tool.call({ tool: 'mcp__crew__progress', phase: 'review' } as never)).toMatchObject({ result: 'ok: Révision 1/4' })
 })
 
 test('fr: Claude Code’s language setting wins over the locale', async ($, on) => {

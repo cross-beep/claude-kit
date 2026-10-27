@@ -3,16 +3,16 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { AgentRun, Flow, Panel, Phase, PlannedTask } from '../types'
 
-const flow = atom({ plugin: 'savvy-progress', key: 'flow' } as const, null)
-const agents = atom({ plugin: 'savvy-progress', key: 'agents' } as const, [])
-const panel = atom({ plugin: 'savvy-progress', key: 'panel' } as const, {
+const flow = atom({ plugin: 'crew', key: 'flow' } as const, null)
+const agents = atom({ plugin: 'crew', key: 'agents' } as const, [])
+const panel = atom({ plugin: 'crew', key: 'panel' } as const, {
   isDoneCollapsed: false,
   autoOpenedFor: '',
 })
-const now = atom({ plugin: 'savvy-progress', key: 'now' } as const, 0)
+const now = atom({ plugin: 'crew', key: 'now' } as const, 0)
 
-const TOOL = 'mcp__savvy-progress__progress'
-const STEP_TOOL = 'mcp__savvy-progress__step'
+const TOOL = 'mcp__crew__progress'
+const STEP_TOOL = 'mcp__crew__step'
 // Added to the end of each savvy worker's brief. Their system prompt words step
 // reporting as a condition ("if the step tool appears among your tools") and they
 // skip it even with the tool listed; the same request in the brief is followed.

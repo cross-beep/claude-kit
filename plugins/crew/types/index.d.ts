@@ -58,7 +58,7 @@ export type Panel = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'savvy-progress': {
+    'crew': {
       flow: Flow | null
       agents: AgentRun[]
       panel: Panel

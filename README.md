@@ -5,10 +5,10 @@ Skills and mods for [Claude Code](https://claude.com/claude-code), in one place:
 | Plugin | Type | What it does |
 | --- | --- | --- |
 | [savvy-flow](plugins/savvy-flow) | skill + agents | `/savvy-flow <task>`: the session model plans, delegates to tiered worker subagents and reviews their work. |
-| [savvy-progress](plugins/savvy-progress) | mod | A progress bar above the prompt and a live agents panel. Made for savvy-flow, shows any subagents. |
+| [crew](plugins/crew) | mod | A progress bar above the prompt and a live agents panel. Made for savvy-flow, shows any subagents. |
 | [session-band](plugins/session-band) | mod | A band above the prompt: turn, speed, prompt cache countdown and context (cost optional); notifies before the cache expires. |
 
-savvy-flow and savvy-progress work on their own and light up together: with both installed, the flow drives the bar and workers report their progress to the panel.
+savvy-flow and crew work on their own and light up together: with both installed, the flow drives the bar and workers report their progress to the panel.
 
 ## Install
 
@@ -19,7 +19,7 @@ In Claude Code:
 ```
 /plugin marketplace add cross-beep/claude-kit
 /plugin install savvy-flow@claude-kit
-/plugin install savvy-progress@claude-kit
+/plugin install crew@claude-kit
 /plugin install session-band@claude-kit
 ```
 
@@ -44,7 +44,7 @@ cp ~/claude-kit/plugins/savvy-flow/agents/*.md ~/.claude/agents/
 **A mod**: load the folder for one session,
 
 ```bash
-claude --plugin-dir ~/claude-kit/plugins/savvy-progress
+claude --plugin-dir ~/claude-kit/plugins/crew
 ```
 
 or for every session (including the desktop app) through `env` in `~/.claude/settings.json`. Several folders are separated with `:`; if the variable is already set, append to it rather than replacing it:
@@ -52,7 +52,7 @@ or for every session (including the desktop app) through `env` in `~/.claude/set
 ```json
 {
   "env": {
-    "CLAUDE_CODE_PLUGIN_DIRS": "~/claude-kit/plugins/savvy-progress"
+    "CLAUDE_CODE_PLUGIN_DIRS": "~/claude-kit/plugins/crew"
   }
 }
 ```

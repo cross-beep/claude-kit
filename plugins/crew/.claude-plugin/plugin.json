@@ -1,5 +1,5 @@
 {
-  "name": "savvy-progress",
+  "name": "crew",
   "version": "1.3.0",
   "description": "Progress bar above the prompt for /savvy-flow, plus an agents panel (/agents-info): running, finished and planned subagents with model, task progress, live activity, context, tokens and time (cost estimate optional).",
   "author": {
@@ -38,7 +38,7 @@
       "default": false
     }
   },
-  "homepage": "https://github.com/cross-beep/claude-kit/tree/main/plugins/savvy-progress",
+  "homepage": "https://github.com/cross-beep/claude-kit/tree/main/plugins/crew",
   "repository": "https://github.com/cross-beep/claude-kit",
   "license": "MIT"
 }
