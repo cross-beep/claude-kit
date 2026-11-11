@@ -9,6 +9,7 @@ Skills and mods for [Claude Code](https://claude.com/claude-code), in one place:
 | [savvy-flow](plugins/savvy-flow) | skill + agents | `/savvy-flow <task>`: the session model plans, delegates to tiered worker subagents and reviews their work. |
 | [crew](plugins/crew) | mod | A progress bar above the prompt and a live agents panel. Made for savvy-flow, shows any subagents. |
 | [session-band](plugins/session-band) | mod | A band above the prompt: turn, speed, prompt cache countdown and context (cost optional); notifies before the cache expires. |
+| [lab](plugins/lab) | mod | A demo pane (`/lab`) to try interactive pieces: turn sparkline, context gauge with a compact button, quick prompts, notes kept between sessions. French UI. |
 
 savvy-flow and crew work on their own and light up together: with both installed, the flow drives the bar and workers report their progress to the panel.
 
@@ -23,6 +24,7 @@ In Claude Code:
 /plugin install savvy-flow@cross-kit
 /plugin install crew@cross-kit
 /plugin install session-band@cross-kit
+/plugin install lab@cross-kit
 ```
 
 The marketplace is named `cross-kit`, so it sits beside johnnyvizz's `claude-kit` without clashing. Restart the session afterwards. Plugin skills and agents are namespaced: the skill is `/savvy-flow:savvy-flow`, the agents `savvy-flow:savvy-careful` and so on.

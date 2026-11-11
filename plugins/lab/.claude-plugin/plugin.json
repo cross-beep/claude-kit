@@ -1,0 +1,13 @@
+{
+  "name": "lab",
+  "version": "0.1.0",
+  "description": "Demo pane (/lab): turn sparkline, context gauge with a compact button, quick prompts, notes kept between sessions, and an end-of-turn signal picker. French UI.",
+  "author": {
+    "name": "cross-beep",
+    "url": "https://github.com/cross-beep"
+  },
+  "types": "./types/index.d.ts",
+  "homepage": "https://github.com/cross-beep/claude-kit/tree/main/plugins/lab",
+  "repository": "https://github.com/cross-beep/claude-kit",
+  "license": "MIT"
+}
