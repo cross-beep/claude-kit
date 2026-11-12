@@ -9,7 +9,6 @@ Des skills et des mods pour [Claude Code](https://claude.com/claude-code), au m�
 | [savvy-flow](plugins/savvy-flow/README.fr.md) | skill + agents | `/savvy-flow <tâche>` : le modèle de la session planifie, délègue à des sous-agents exécutants par niveau et révise leur travail. |
 | [crew](plugins/crew/README.fr.md) | mod | Une barre de progression au-dessus du prompt et un panneau des agents en direct. Pensé pour savvy-flow, affiche n'importe quel sous-agent. |
 | [session-band](plugins/session-band/README.fr.md) | mod | Un bandeau au-dessus du prompt : tour, vitesse, compte à rebours du cache du prompt et contexte (coût en option) ; prévient avant l'expiration du cache. |
-| [lab](plugins/lab/README.fr.md) | mod | Un panneau de démonstration (`/lab`) pour essayer des éléments interactifs : barres des tours, jauge de contexte avec bouton de compaction, prompts rapides, notes gardées d'une session à l'autre. |
 
 savvy-flow et crew fonctionnent chacun seul et s'allument ensemble : avec les deux installés, le flow pilote la barre et les exécutants rapportent leur avancement au panneau.
 
@@ -26,7 +25,6 @@ Dans Claude Code :
 /plugin install savvy-flow@cross-kit
 /plugin install crew@cross-kit
 /plugin install session-band@cross-kit
-/plugin install lab@cross-kit
 ```
 
 La marketplace s'appelle `cross-kit`, elle cohabite donc avec le `claude-kit` de johnnyvizz sans conflit. Redémarrez la session ensuite. Les skills et agents d'un plugin portent son préfixe : le skill devient `/savvy-flow:savvy-flow`, les agents `savvy-flow:savvy-careful`, etc.

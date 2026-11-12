@@ -28,13 +28,6 @@
       "description": "Mod: band above the prompt with turn, speed, prompt cache countdown, context and optional cost; notifies before the cache expires.",
       "version": "0.3.0",
       "category": "mod"
-    },
-    {
-      "name": "lab",
-      "source": "./plugins/lab",
-      "description": "Mod: demo pane (/lab) with a turn sparkline, context gauge, quick prompts, notes kept between sessions and an end-of-turn signal. French UI.",
-      "version": "0.1.0",
-      "category": "mod"
     }
   ]
 }
